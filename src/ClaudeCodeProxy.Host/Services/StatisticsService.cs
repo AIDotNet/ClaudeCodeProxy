@@ -254,15 +254,18 @@ public class StatisticsService
     /// <summary>
     /// 获取费用数据
     /// </summary>
-    public async Task<CostDataResponse> GetCostDataAsync(CancellationToken cancellationToken = default)
+    public async Task<CostDataResponse> GetCostDataAsync(Guid currentUserId,
+        CancellationToken cancellationToken = default)
     {
         var today = DateTime.Now.Date;
 
         var todayCost = await _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId)
             .Where(x => x.RequestDate == today)
             .SumAsync(x => x.Cost, cancellationToken);
 
         var totalCost = await _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId)
             .SumAsync(x => x.Cost, cancellationToken);
 
         return new CostDataResponse

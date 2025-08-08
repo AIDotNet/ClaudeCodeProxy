@@ -2,26 +2,21 @@
 using ClaudeCodeProxy.Abstraction.Chats;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Core.AI;
+using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Extensions;
 using ClaudeCodeProxy.Host.Helper;
-using ClaudeCodeProxy.Host.Models;
-using ClaudeCodeProxy.Domain;
 using Making.AspNetCore;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;
 using Thor.Abstractions.Anthropic;
-using Thor.Abstractions.Chats;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 [MiniApi(Route = "/v1/messages", Tags = "Messages")]
 public partial class MessageService(
     AccountsService accountsService,
-    SessionHelper sessionHelper,
-    IThorChatCompletionsService thorChatCompletionsService,
-    IAuthorizationService authorizationService)
+    SessionHelper sessionHelper)
 {
     public async Task HandleAsync(
         HttpContext httpContext,
@@ -239,8 +234,8 @@ public partial class MessageService(
     private async Task HandleOpenAIAsync(
         HttpContext httpContext,
         AnthropicInput request,
-        Domain.ApiKey apiKeyValue,
-        Domain.Accounts? account,
+        ApiKey apiKeyValue,
+        Accounts? account,
         Guid requestLogId,
         RequestLogService requestLogService,
         CancellationToken cancellationToken = default)
@@ -534,8 +529,8 @@ public partial class MessageService(
         HttpContext httpContext,
         AnthropicInput request,
         IAnthropicChatCompletionsService chatCompletionsService,
-        Domain.ApiKey apiKeyValue,
-        Domain.Accounts? account,
+        ApiKey apiKeyValue,
+        Accounts? account,
         Guid requestLogId,
         RequestLogService requestLogService,
         CancellationToken cancellationToken = default)
@@ -852,7 +847,7 @@ public partial class MessageService(
     /// <param name="requestedModel">请求的原始模型</param>
     /// <param name="account">使用的账户</param>
     /// <returns>映射后的模型名称，如果没有映射则返回原始模型</returns>
-    private string MapRequestedModel(string requestedModel, Domain.Accounts? account)
+    private string MapRequestedModel(string requestedModel, Accounts? account)
     {
         // 如果账户为空或没有配置模型映射，返回原始模型
         if (account?.SupportedModels == null || account.SupportedModels.Count == 0)

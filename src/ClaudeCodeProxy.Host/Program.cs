@@ -308,6 +308,8 @@ public static class Program
         
         services.AddMapster();
 
+        services.AddResponseCompression();
+
         // 添加全局过滤器
         services.AddScoped<GlobalResponseFilter>();
 
@@ -355,6 +357,8 @@ public static class Program
         });
 
         app.UseStaticFiles();
+
+        app.UseResponseCompression();
 
         // 认证和授权中间件
         app.UseJwtAuthentication();

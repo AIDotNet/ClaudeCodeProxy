@@ -125,11 +125,12 @@ public static class DashboardEndpoints
     /// </summary>
     private static async Task<Results<Ok<CostDataResponse>, BadRequest<string>>> GetCostData(
         [FromServices] StatisticsService statisticsService,
+        [FromServices] IUserContext userContext,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var costData = await statisticsService.GetCostDataAsync(cancellationToken);
+            var costData = await statisticsService.GetCostDataAsync(userContext.GetCurrentUserId().Value,cancellationToken);
             return TypedResults.Ok(costData);
         }
         catch (Exception ex)

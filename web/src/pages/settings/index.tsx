@@ -15,19 +15,6 @@ export default function SettingsPage() {
   const { showToast } = useToast();
   const isAdmin = hasRole('admin');
 
-  const [settings, setSettings] = useState({
-    systemName: 'Claude Code Proxy',
-    maxConcurrentRequests: 10,
-    requestTimeout: 30,
-    enableLogging: true,
-    enableMetrics: true,
-    enableNotifications: false,
-    autoBackup: true,
-    darkMode: false,
-    apiRateLimit: 100,
-    sessionTimeout: 24,
-  });
-
   const [invitationSettings, setInvitationSettings] = useState<InvitationSettings>({
     inviterReward: 10,
     invitedReward: 5,
@@ -35,7 +22,6 @@ export default function SettingsPage() {
     invitationEnabled: true,
   });
 
-  const [saving, setSaving] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
   const [loadingInvitation, setLoadingInvitation] = useState(false);
   const [invitationErrors, setInvitationErrors] = useState<Record<string, string>>({});
@@ -62,20 +48,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // Here you would typically save to backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Settings saved:', settings);
-      showToast('设置保存成功', 'success');
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      showToast('设置保存失败', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const validateInvitationSettings = (settings: InvitationSettings): Record<string, string> => {
     const errors: Record<string, string> = {};
@@ -148,15 +120,9 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Settings2 className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">系统设置</h1>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? '保存中...' : '保存设置'}
-        </Button>
+      <div className="flex items-center space-x-2">
+        <Settings2 className="h-6 w-6" />
+        <h1 className="text-2xl font-bold">系统设置</h1>
       </div>
 
       <div className="grid gap-6">

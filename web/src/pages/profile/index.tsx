@@ -48,8 +48,6 @@ const ProfilePage: React.FC = () => {
   const [showRecordsDialog, setShowRecordsDialog] = useState(false)
 
   useEffect(() => {
-    setRedeemRecords([]);
-    setRecordsLoading(false)
     fetchProfileData()
     fetchDashboardStats()
   }, [])
