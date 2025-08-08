@@ -765,15 +765,22 @@ class ApiService {
   }
 
   // User Management APIs
-  async getUsers(request: UsersRequest): Promise<any> {
+  async getUsers(pageIndex: number = 1, pageSize: number = 20): Promise<UsersResponse> {
     try {
       const query = new URLSearchParams();
-      Object.entries(request).forEach(([key, value]) => {
-        if (value !== undefined) {
-          query.append(key, value.toString() as string);
-        }
-      });
-      return this.request<any>(`/users?${query.toString()}`);
+      query.append('pageIndex', pageIndex.toString());
+      query.append('pageSize', pageSize.toString());
+      
+      const response = await this.request<any>(`/users?${query.toString()}`);
+      
+      // The backend returns PagedResult<UserDto> structure
+      return {
+        data: response.items || response,
+        total: response.totalCount || response.length,
+        page: response.pageIndex || pageIndex,
+        pageSize: response.pageSize || pageSize,
+        totalPages: response.totalPages || Math.ceil((response.totalCount || response.length) / pageSize)
+      };
     } catch (error) {
       throw error;
     }

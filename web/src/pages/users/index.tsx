@@ -22,7 +22,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { apiService } from '@/services/api';
-import type { User, UserRole, UsersRequest } from '@/services/api';
+import type { User, UserRole, UsersResponse } from '@/services/api';
 import UserModal from '@/components/users/UserModal';
 import RoleModal from '@/components/users/RoleModal';
 import { showToast } from '@/utils/toast';
@@ -68,20 +68,11 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const request: UsersRequest = {
-        page: currentPage,
-        pageSize,
-        searchTerm: searchTerm || undefined,
-        roleId: roleFilter !== 'all' ? roleFilter : undefined,
-        isEnabled: statusFilter !== 'all' ? statusFilter === 'enabled' : undefined,
-        sortBy: 'createdAt',
-        sortDirection: 'desc'
-      };
       
-      const data = await apiService.getUsers(request);
-      setUsers(data);
-      setTotal(data.length);
-      setTotalPages(Math.ceil(data.length / pageSize));
+      const response = await apiService.getUsers(currentPage, pageSize);
+      setUsers(response.data);
+      setTotal(response.total);
+      setTotalPages(response.totalPages);
     } catch (error) {
       console.error('Failed to fetch users:', error);
       showToast('获取用户列表失败', 'error');

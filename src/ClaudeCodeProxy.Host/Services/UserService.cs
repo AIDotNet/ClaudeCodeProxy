@@ -15,18 +15,30 @@ namespace ClaudeCodeProxy.Host.Services;
 public class UserService(IContext context,IMapper mapper)
 {
     /// <summary>
-    /// 获取所有用户
+    /// 获取所有用户（分页）
     /// </summary>
-    public async Task<List<UserDto>> GetUsersAsync()
+    public async Task<PagedResult<UserDto>> GetUsersAsync(int pageIndex = 1, int pageSize = 20)
     {
-        var value = await context.Users
+        // 获取总数
+        var totalCount = await context.Users.CountAsync();
+        
+        // 获取分页数据
+        var users = await context.Users
             .Include(u => u.Role)
             .OrderByDescending(u => u.CreatedAt)
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
         
-        var dto = mapper.Map<List<UserDto>>(value);
+        var userDtos = mapper.Map<List<UserDto>>(users);
         
-        return dto;
+        return new PagedResult<UserDto>
+        {
+            Items = userDtos,
+            TotalCount = totalCount,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        };
     }
 
     /// <summary>

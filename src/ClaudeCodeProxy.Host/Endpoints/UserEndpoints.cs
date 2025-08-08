@@ -17,15 +17,15 @@ public static class UserEndpoints
             .AddEndpointFilter<GlobalResponseFilter>()
             .RequireAuthorization();
 
-        // 获取所有用户
-        group.MapGet("/", async (UserService userService) =>
+        // 获取所有用户（分页）
+        group.MapGet("/", async (UserService userService, int pageIndex = 1, int pageSize = 20) =>
             {
-                var users = await userService.GetUsersAsync();
+                var users = await userService.GetUsersAsync(pageIndex, pageSize);
                 return users;
             })
             .WithName("GetUsers")
-            .WithSummary("获取所有用户")
-            .Produces<ApiResponse<List<UserDto>>>();
+            .WithSummary("获取所有用户（分页）")
+            .Produces<ApiResponse<PagedResult<UserDto>>>();
 
         // 根据ID获取用户
         group.MapGet("/{id:Guid}", async (Guid id, UserService userService) =>
