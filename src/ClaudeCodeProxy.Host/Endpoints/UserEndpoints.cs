@@ -1,6 +1,7 @@
 using ClaudeCodeProxy.Host.Filters;
 using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
+using ClaudeCodeProxy.Domain;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
@@ -136,5 +137,176 @@ public static class UserEndpoints
             .WithName("GetUserLoginHistory")
             .WithSummary("获取用户登录历史")
             .Produces<ApiResponse<List<UserLoginHistoryDto>>>();
+
+        // 获取用户账户绑定管理信息
+        group.MapGet("/{id:Guid}/account-bindings", 
+                async (Guid id, UserAccountBindingService bindingService) =>
+                {
+                    try
+                    {
+                        var managementDto = await bindingService.GetAccountBindingManagementAsync(id);
+                        return Results.Ok(new ApiResponse<AccountBindingManagementDto>
+                        {
+                            Success = true,
+                            Data = managementDto,
+                            Message = "获取用户账户绑定信息成功"
+                        });
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = ex.Message
+                        });
+                    }
+                })
+            .WithName("GetUserAccountBindingManagement")
+            .WithSummary("获取用户账户绑定管理信息")
+            .Produces<ApiResponse<AccountBindingManagementDto>>()
+            .Produces<ApiResponse<object>>(400);
+
+        // 绑定用户到账户
+        group.MapPost("/{id:Guid}/account-bindings", 
+                async (Guid id, BindAccountRequest request, UserAccountBindingService bindingService) =>
+                {
+                    try
+                    {
+                        var binding = await bindingService.BindUserToAccountAsync(
+                            id, 
+                            request.AccountId, 
+                            request.Priority, 
+                            request.BindingType, 
+                            request.Remarks);
+                        
+                        return Results.Ok(new ApiResponse<UserAccountBinding>
+                        {
+                            Success = true,
+                            Data = binding,
+                            Message = "绑定账户成功"
+                        });
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = ex.Message
+                        });
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        return Results.BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = ex.Message
+                        });
+                    }
+                })
+            .WithName("CreateUserAccountBinding")
+            .WithSummary("绑定用户到账户")
+            .Produces<ApiResponse<UserAccountBinding>>(201)
+            .Produces<ApiResponse<object>>(400);
+
+        // 解除用户账户绑定
+        group.MapDelete("/{id:Guid}/account-bindings/{accountId}", 
+                async (Guid id, string accountId, UserAccountBindingService bindingService) =>
+                {
+                    try
+                    {
+                        var result = await bindingService.UnbindUserFromAccountAsync(id, accountId);
+                        if (!result)
+                        {
+                            return Results.NotFound(new ApiResponse<object>
+                            {
+                                Success = false,
+                                Message = "找不到该绑定关系"
+                            });
+                        }
+
+                        return Results.Ok(new ApiResponse<object>
+                        {
+                            Success = true,
+                            Message = "解除绑定成功"
+                        });
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = ex.Message
+                        });
+                    }
+                })
+            .WithName("UnbindUserFromAccount")
+            .WithSummary("解除用户账户绑定")
+            .Produces<ApiResponse<object>>()
+            .Produces<ApiResponse<object>>(400)
+            .Produces<ApiResponse<object>>(404);
+
+        // 更新用户账户绑定优先级
+        group.MapPut("/{id:Guid}/account-bindings/{accountId}/priority", 
+                async (Guid id, string accountId, UpdateBindingPriorityRequest request, UserAccountBindingService bindingService) =>
+                {
+                    try
+                    {
+                        var result = await bindingService.UpdateBindingPriorityAsync(id, accountId, request.Priority);
+                        if (!result)
+                        {
+                            return Results.NotFound(new ApiResponse<object>
+                            {
+                                Success = false,
+                                Message = "找不到该绑定关系"
+                            });
+                        }
+
+                        return Results.Ok(new ApiResponse<object>
+                        {
+                            Success = true,
+                            Message = "更新优先级成功"
+                        });
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = ex.Message
+                        });
+                    }
+                })
+            .WithName("UpdateUserBindingPriority")
+            .WithSummary("更新用户账户绑定优先级")
+            .Produces<ApiResponse<object>>()
+            .Produces<ApiResponse<object>>(400)
+            .Produces<ApiResponse<object>>(404);
+
+        // 批量更新用户账户绑定
+        group.MapPut("/{id:Guid}/account-bindings", 
+                async (Guid id, UpdateUserAccountBindingsRequest request, UserAccountBindingService bindingService) =>
+                {
+                    try
+                    {
+                        var result = await bindingService.UpdateUserAccountBindingsAsync(id, request.AccountBindings);
+                        return Results.Ok(new ApiResponse<object>
+                        {
+                            Success = true,
+                            Message = "批量更新绑定成功"
+                        });
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = ex.Message
+                        });
+                    }
+                })
+            .WithName("BatchUpdateUserAccountBindings")
+            .WithSummary("批量更新用户账户绑定")
+            .Produces<ApiResponse<object>>()
+            .Produces<ApiResponse<object>>(400);
     }
 }

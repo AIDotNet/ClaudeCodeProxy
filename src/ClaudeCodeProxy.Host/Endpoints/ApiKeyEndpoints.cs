@@ -90,6 +90,29 @@ public static class ApiKeyEndpoints
             .WithSummary("获取API Key费用使用情况")
             .Produces<ApiResponse<CostUsageInfo>>()
             .Produces<ApiResponse>(404);
+
+        // 获取API Key账户绑定管理信息
+        group.MapGet("/{id:guid}/account-bindings", GetApiKeyAccountBindings)
+            .WithName("GetApiKeyAccountBindings")
+            .WithSummary("获取API Key账户绑定管理信息")
+            .Produces<ApiResponse<ApiKeyBindingManagementDto>>()
+            .Produces<ApiResponse>(404);
+
+        // 设置API Key默认账户
+        group.MapPut("/{id:guid}/default-account", SetApiKeyDefaultAccount)
+            .WithName("SetApiKeyDefaultAccount")
+            .WithSummary("设置API Key默认账户")
+            .Produces<ApiResponse>()
+            .Produces<ApiResponse>(404)
+            .Produces<ApiResponse>(400);
+
+        // 批量更新API Key账户绑定
+        group.MapPut("/{id:guid}/account-bindings", UpdateApiKeyAccountBindings)
+            .WithName("UpdateApiKeyAccountBindings")
+            .WithSummary("批量更新API Key账户绑定")
+            .Produces<ApiResponse>()
+            .Produces<ApiResponse>(404)
+            .Produces<ApiResponse>(400);
     }
 
     /// <summary>
@@ -311,6 +334,131 @@ public static class ApiKeyEndpoints
         catch (Exception ex)
         {
             return TypedResults.NotFound($"获取API Key使用情况失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取API Key账户绑定管理信息
+    /// </summary>
+    private static async Task<Results<Ok<ApiResponse<ApiKeyBindingManagementDto>>, NotFound<ApiResponse<object>>>> GetApiKeyAccountBindings(
+        Guid id,
+        ApiKeyService apiKeyService,
+        IUserContext userContext)
+    {
+        try
+        {
+            var managementDto = await apiKeyService.GetApiKeyBindingManagementAsync(id);
+            if (managementDto == null)
+            {
+                return TypedResults.NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"未找到ID为 {id} 的API Key"
+                });
+            }
+
+            return TypedResults.Ok(new ApiResponse<ApiKeyBindingManagementDto>
+            {
+                Success = true,
+                Data = managementDto,
+                Message = "获取API Key账户绑定信息成功"
+            });
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound(new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"获取API Key账户绑定信息失败: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 设置API Key默认账户
+    /// </summary>
+    private static async Task<Results<Ok<ApiResponse<object>>, NotFound<ApiResponse<object>>, BadRequest<ApiResponse<object>>>> SetApiKeyDefaultAccount(
+        Guid id,
+        SetDefaultAccountRequest request,
+        ApiKeyService apiKeyService)
+    {
+        try
+        {
+            var success = await apiKeyService.SetDefaultAccountAsync(id, request.AccountId);
+            if (!success)
+            {
+                return TypedResults.NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"未找到ID为 {id} 的API Key"
+                });
+            }
+
+            return TypedResults.Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "设置默认账户成功"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"设置默认账户失败: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 批量更新API Key账户绑定
+    /// </summary>
+    private static async Task<Results<Ok<ApiResponse<object>>, NotFound<ApiResponse<object>>, BadRequest<ApiResponse<object>>>> UpdateApiKeyAccountBindings(
+        Guid id,
+        UpdateApiKeyAccountBindingsRequest request,
+        ApiKeyService apiKeyService)
+    {
+        try
+        {
+            var success = await apiKeyService.UpdateAccountBindingsAsync(id, request.DefaultAccountId, request.AccountBindings);
+            if (!success)
+            {
+                return TypedResults.NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"未找到ID为 {id} 的API Key"
+                });
+            }
+
+            return TypedResults.Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "更新账户绑定成功"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"更新账户绑定失败: {ex.Message}"
+            });
         }
     }
 }

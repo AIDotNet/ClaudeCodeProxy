@@ -341,4 +341,172 @@ public class ApiKeyService(IContext context)
         rng.GetBytes(bytes);
         return "sk-ant-" + Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd('=');
     }
+
+    /// <summary>
+    /// 获取API Key账户绑定管理信息
+    /// </summary>
+    public async Task<ApiKeyBindingManagementDto?> GetApiKeyBindingManagementAsync(
+        Guid apiKeyId,
+        CancellationToken cancellationToken = default)
+    {
+        var apiKey = await context.ApiKeys
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.Id == apiKeyId, cancellationToken);
+
+        if (apiKey == null)
+        {
+            return null;
+        }
+
+        // 获取当前绑定的账户信息
+        var accountBindings = new List<ApiKeyAccountBindingDto>();
+        if (apiKey.AccountBindings != null && apiKey.AccountBindings.Any())
+        {
+            var boundAccountIds = apiKey.AccountBindings.Select(b => b.AccountId).ToList();
+            var boundAccounts = await context.Accounts
+                .Where(a => boundAccountIds.Contains(a.Id))
+                .ToListAsync(cancellationToken);
+
+            accountBindings = apiKey.AccountBindings.Select(binding =>
+            {
+                var account = boundAccounts.FirstOrDefault(a => a.Id == binding.AccountId);
+                return new ApiKeyAccountBindingDto
+                {
+                    AccountId = binding.AccountId,
+                    AccountName = account?.Name ?? "未知账户",
+                    Platform = account?.Platform ?? "未知",
+                    Priority = binding.Priority,
+                    IsEnabled = binding.IsEnabled,
+                    IsDefault = binding.AccountId == apiKey.DefaultAccountId
+                };
+            }).OrderBy(b => b.Priority).ToList();
+        }
+
+        // 获取可用于绑定的账户（用户拥有的和全局账户）
+        var existingBoundAccountIds = apiKey.AccountBindings?.Select(b => b.AccountId).ToHashSet() ?? new HashSet<string>();
+        var availableAccounts = await context.Accounts
+            .Where(a => a.IsEnabled && 
+                       (a.IsGlobal || a.OwnerUserId == apiKey.UserId) && 
+                       !existingBoundAccountIds.Contains(a.Id))
+            .ToListAsync(cancellationToken);
+
+        var availableAccountDtos = availableAccounts.Select(account => new AvailableAccountDto
+        {
+            Id = account.Id,
+            Name = account.Name,
+            Platform = account.Platform,
+            Description = account.Description,
+            Status = account.Status,
+            IsGlobal = account.IsGlobal,
+            IsOwned = account.OwnerUserId == apiKey.UserId,
+            SuggestedPriority = GetSuggestedPriority(account)
+        }).ToList();
+
+        return new ApiKeyBindingManagementDto
+        {
+            ApiKeyId = apiKeyId,
+            ApiKeyName = apiKey.Name,
+            UserId = apiKey.UserId,
+            DefaultAccountId = apiKey.DefaultAccountId,
+            AccountBindings = accountBindings,
+            AvailableAccounts = availableAccountDtos
+        };
+    }
+
+    /// <summary>
+    /// 设置API Key默认账户
+    /// </summary>
+    public async Task<bool> SetDefaultAccountAsync(
+        Guid apiKeyId,
+        string accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var apiKey = await context.ApiKeys.FirstOrDefaultAsync(a => a.Id == apiKeyId, cancellationToken);
+        if (apiKey == null)
+        {
+            return false;
+        }
+
+        // 验证账户存在且用户有权限使用
+        var account = await context.Accounts
+            .FirstOrDefaultAsync(a => a.Id == accountId && 
+                                    a.IsEnabled && 
+                                    (a.IsGlobal || a.OwnerUserId == apiKey.UserId), 
+                               cancellationToken);
+
+        if (account == null)
+        {
+            throw new ArgumentException($"账户不存在或用户无权限使用: {accountId}");
+        }
+
+        apiKey.DefaultAccountId = accountId;
+        apiKey.ModifiedAt = DateTime.Now;
+
+        await context.SaveAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 更新API Key账户绑定
+    /// </summary>
+    public async Task<bool> UpdateAccountBindingsAsync(
+        Guid apiKeyId,
+        string? defaultAccountId,
+        List<ApiKeyAccountBindingRequest> bindings,
+        CancellationToken cancellationToken = default)
+    {
+        var apiKey = await context.ApiKeys.FirstOrDefaultAsync(a => a.Id == apiKeyId, cancellationToken);
+        if (apiKey == null)
+        {
+            return false;
+        }
+
+        // 验证所有账户都存在且用户有权限使用
+        var accountIds = bindings.Select(b => b.AccountId).ToList();
+        if (!string.IsNullOrEmpty(defaultAccountId))
+        {
+            accountIds.Add(defaultAccountId);
+        }
+
+        var validAccounts = await context.Accounts
+            .Where(a => accountIds.Contains(a.Id) && 
+                       a.IsEnabled && 
+                       (a.IsGlobal || a.OwnerUserId == apiKey.UserId))
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken);
+
+        var invalidAccountIds = accountIds.Except(validAccounts).ToList();
+        if (invalidAccountIds.Any())
+        {
+            throw new ArgumentException($"以下账户不存在或用户无权限使用: {string.Join(", ", invalidAccountIds)}");
+        }
+
+        // 更新绑定信息
+        var newBindings = bindings.Select(b => new ApiKeyAccountBinding
+        {
+            AccountId = b.AccountId,
+            Priority = b.Priority,
+            IsEnabled = b.IsEnabled
+        }).ToList();
+
+        apiKey.AccountBindings = newBindings;
+        apiKey.DefaultAccountId = defaultAccountId;
+        apiKey.ModifiedAt = DateTime.Now;
+
+        await context.SaveAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 获取建议的优先级
+    /// </summary>
+    private static int GetSuggestedPriority(Accounts account)
+    {
+        return account.AccountType.ToLower() switch
+        {
+            "dedicated" => 10, // 专属账户优先级高
+            "shared" => 50,    // 共享账户中等优先级
+            _ => 50
+        };
+    }
 }

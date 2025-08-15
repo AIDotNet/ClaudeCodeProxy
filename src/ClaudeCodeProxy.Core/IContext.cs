@@ -35,6 +35,7 @@ public interface IContext
 
     public DbSet<UserAccountBinding> UserAccountBindings { get; set; }
     
+    public DbSet<AuditLog> AuditLogs { get; set; }
     
 
     /// <summary>

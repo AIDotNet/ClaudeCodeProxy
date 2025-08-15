@@ -23,6 +23,7 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
     public DbSet<InvitationSettings> InvitationSettings { get; set; }
     public DbSet<Announcement> Announcements { get; set; }
     public DbSet<UserAccountBinding> UserAccountBindings { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
@@ -1203,6 +1204,208 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
             // 复合索引（用于获取当前可见的公告）
             entity.HasIndex(e => new { e.IsVisible, e.Priority, e.CreatedAt })
                 .HasDatabaseName("IX_Announcements_IsVisible_Priority_CreatedAt");
+        });
+
+        // 配置 UserAccountBinding 实体
+        modelBuilder.Entity<UserAccountBinding>(entity =>
+        {
+            entity.ToTable("UserAccountBindings");
+            entity.HasKey(e => e.Id);
+
+            // 基本属性配置
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.AccountId)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.BindingType)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("private");
+
+            entity.Property(e => e.Priority)
+                .HasDefaultValue(50);
+
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.Remarks)
+                .HasMaxLength(500);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.AccountBindings)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Account)
+                .WithMany(a => a.UserBindings)
+                .HasForeignKey(e => e.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_UserAccountBindings_UserId");
+
+            entity.HasIndex(e => e.AccountId)
+                .HasDatabaseName("IX_UserAccountBindings_AccountId");
+
+            entity.HasIndex(e => e.BindingType)
+                .HasDatabaseName("IX_UserAccountBindings_BindingType");
+
+            entity.HasIndex(e => e.Priority)
+                .HasDatabaseName("IX_UserAccountBindings_Priority");
+
+            entity.HasIndex(e => new { e.UserId, e.AccountId })
+                .IsUnique()
+                .HasDatabaseName("UX_UserAccountBindings_User_Account");
+
+            entity.HasIndex(e => new { e.UserId, e.Priority, e.IsActive })
+                .HasDatabaseName("IX_UserAccountBindings_User_Priority_Active");
+        });
+
+        // 为 Accounts 实体添加新的关系配置
+        modelBuilder.Entity<Accounts>(entity =>
+        {
+            // 与用户的所有者关系
+            entity.HasOne(e => e.Owner)
+                .WithMany(u => u.OwnedAccounts)
+                .HasForeignKey(e => e.OwnerUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // 添加新字段的索引
+            entity.HasIndex(e => e.IsGlobal)
+                .HasDatabaseName("IX_Accounts_IsGlobal");
+
+            entity.HasIndex(e => e.OwnerUserId)
+                .HasDatabaseName("IX_Accounts_OwnerUserId");
+
+            entity.HasIndex(e => new { e.IsGlobal, e.IsEnabled, e.Status })
+                .HasDatabaseName("IX_Accounts_Global_Enabled_Status");
+        });
+
+        // 配置 AuditLog 实体
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("AuditLogs");
+            entity.HasKey(e => e.Id);
+
+            // 基本属性配置
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.Action)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ResourceType)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ResourceId)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Details)
+                .HasColumnType("TEXT");
+
+            entity.Property(e => e.OldValues)
+                .HasColumnType("TEXT");
+
+            entity.Property(e => e.NewValues)
+                .HasColumnType("TEXT");
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(45);
+
+            entity.Property(e => e.UserAgent)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Result)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("success");
+
+            entity.Property(e => e.ErrorMessage)
+                .HasColumnType("TEXT");
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_AuditLogs_UserId");
+
+            entity.HasIndex(e => e.Action)
+                .HasDatabaseName("IX_AuditLogs_Action");
+
+            entity.HasIndex(e => e.ResourceType)
+                .HasDatabaseName("IX_AuditLogs_ResourceType");
+
+            entity.HasIndex(e => e.ResourceId)
+                .HasDatabaseName("IX_AuditLogs_ResourceId");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_AuditLogs_CreatedAt");
+
+            entity.HasIndex(e => e.Result)
+                .HasDatabaseName("IX_AuditLogs_Result");
+
+            // 复合索引
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt })
+                .HasDatabaseName("IX_AuditLogs_UserId_CreatedAt");
+
+            entity.HasIndex(e => new { e.ResourceType, e.ResourceId })
+                .HasDatabaseName("IX_AuditLogs_ResourceType_ResourceId");
+
+            entity.HasIndex(e => new { e.Action, e.CreatedAt })
+                .HasDatabaseName("IX_AuditLogs_Action_CreatedAt");
+        });
+
+        // 为 ApiKey 实体添加新的JSON字段配置
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            // 配置新的账户绑定字段
+            entity.Property(e => e.DefaultAccountId)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.AccountBindings)
+                .HasConversion(
+                    v => v == null || v.Count == 0
+                        ? null
+                        : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                    v => string.IsNullOrEmpty(v)
+                        ? null
+                        : JsonSerializer.Deserialize<List<ApiKeyAccountBinding>>(v, new JsonSerializerOptions()))
+                .HasColumnType("TEXT");
+
+            // 为新字段添加索引
+            entity.HasIndex(e => e.DefaultAccountId)
+                .HasDatabaseName("IX_ApiKeys_DefaultAccountId");
         });
     }
 
