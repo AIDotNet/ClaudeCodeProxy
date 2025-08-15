@@ -22,7 +22,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { apiService } from '@/services/api';
-import type { User, UserRole, UsersResponse } from '@/services/api';
+import type { User, UserRole } from '@/services/api';
 import UserModal from '@/components/users/UserModal';
 import RoleModal from '@/components/users/RoleModal';
 import { showToast } from '@/utils/toast';

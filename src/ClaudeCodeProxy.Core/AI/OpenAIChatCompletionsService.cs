@@ -25,10 +25,14 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
         using var openai =
             Activity.Current?.Source.StartActivity("OpenAI 对话补全");
 
-        chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+        // 判断是否是魔塔
+        if (options?.Address.StartsWith("https://api-inference.modelscope.cn") == false)
         {
-            IncludeUsage = true
-        };
+            chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+            {
+                IncludeUsage = true
+            };
+        }
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).PostJsonAsync(
             options?.Address.TrimEnd('/') + "/chat/completions",
@@ -69,10 +73,15 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
         using var openai =
             Activity.Current?.Source.StartActivity("OpenAI 对话流式补全");
 
-        chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+        // 判断是否是魔塔
+        if (options?.Address.StartsWith("https://api-inference.modelscope.cn") == false)
         {
-            IncludeUsage = true
-        };
+            chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+            {
+                IncludeUsage = true
+            };
+        }
+
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).HttpRequestRaw(
             options?.Address.TrimEnd('/') + "/chat/completions",
