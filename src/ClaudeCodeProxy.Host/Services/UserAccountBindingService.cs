@@ -1,0 +1,415 @@
+using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Domain;
+using ClaudeCodeProxy.Host.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+
+namespace ClaudeCodeProxy.Host.Services;
+
+/// <summary>
+/// 用户账户绑定服务
+/// </summary>
+public class UserAccountBindingService(
+    IContext context,
+    IMemoryCache cache,
+    ILogger<UserAccountBindingService> logger)
+{
+    private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// 绑定用户到账户
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="accountId">账户ID</param>
+    /// <param name="priority">优先级</param>
+    /// <param name="bindingType">绑定类型</param>
+    /// <param name="remarks">备注</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>绑定关系</returns>
+    public async Task<UserAccountBinding> BindUserToAccountAsync(
+        Guid userId,
+        string accountId,
+        int priority = 50,
+        string bindingType = "private",
+        string? remarks = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 验证用户存在
+        var userExists = await context.Users.AnyAsync(u => u.Id == userId, cancellationToken);
+        if (!userExists)
+        {
+            throw new ArgumentException($"用户不存在: {userId}");
+        }
+
+        // 验证账户存在
+        var account = await context.Accounts.FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
+        if (account == null)
+        {
+            throw new ArgumentException($"账户不存在: {accountId}");
+        }
+
+        // 检查是否已经绑定
+        var existingBinding = await context.UserAccountBindings
+            .FirstOrDefaultAsync(b => b.UserId == userId && b.AccountId == accountId, cancellationToken);
+
+        if (existingBinding != null)
+        {
+            throw new InvalidOperationException($"用户已经绑定到此账户: {accountId}");
+        }
+
+        // 创建绑定关系
+        var binding = new UserAccountBinding
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            AccountId = accountId,
+            BindingType = bindingType,
+            Priority = priority,
+            IsActive = true,
+            Remarks = remarks,
+            CreatedAt = DateTime.Now
+        };
+
+        context.UserAccountBindings.Add(binding);
+        await context.SaveAsync(cancellationToken);
+
+        // 清除相关缓存
+        await InvalidateUserCacheAsync(userId);
+
+        logger.LogInformation("用户 {UserId} 已绑定到账户 {AccountId}，优先级: {Priority}",
+            userId, accountId, priority);
+
+        return binding;
+    }
+
+    /// <summary>
+    /// 解除用户和账户的绑定
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="accountId">账户ID</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否成功解除绑定</returns>
+    public async Task<bool> UnbindUserFromAccountAsync(
+        Guid userId,
+        string accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var binding = await context.UserAccountBindings
+            .FirstOrDefaultAsync(b => b.UserId == userId && b.AccountId == accountId, cancellationToken);
+
+        if (binding == null)
+        {
+            return false;
+        }
+
+        context.UserAccountBindings.Remove(binding);
+        await context.SaveAsync(cancellationToken);
+
+        // 清除相关缓存
+        await InvalidateUserCacheAsync(userId);
+
+        logger.LogInformation("用户 {UserId} 已解除与账户 {AccountId} 的绑定", userId, accountId);
+        return true;
+    }
+
+    /// <summary>
+    /// 获取用户绑定的账户列表（按优先级排序）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="includeGlobal">是否包含全局账户</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>绑定的账户列表</returns>
+    public async Task<List<Accounts>> GetUserBoundAccountsAsync(
+        Guid userId,
+        bool includeGlobal = true,
+        CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"user_accounts_{userId}_{includeGlobal}";
+
+        if (cache.TryGetValue(cacheKey, out List<Accounts>? cachedAccounts) && cachedAccounts != null)
+        {
+            return cachedAccounts;
+        }
+
+        var query = context.Accounts.AsQueryable();
+
+        // 构建查询：用户绑定的账户 + 全局账户
+        var accountsQuery = from account in context.Accounts
+            where account.IsEnabled &&
+                  (account.IsGlobal && includeGlobal ||
+                   context.UserAccountBindings.Any(b =>
+                       b.UserId == userId &&
+                       b.AccountId == account.Id &&
+                       b.IsActive))
+            select account;
+
+        var accounts = await accountsQuery
+            .Include(a => a.UserBindings.Where(b => b.UserId == userId))
+            .OrderBy(a =>
+                a.UserBindings.Any(b => b.UserId == userId)
+                    ? a.UserBindings.First(b => b.UserId == userId).Priority
+                    : int.MaxValue)
+            .ThenBy(a => a.Priority)
+            .ToListAsync(cancellationToken);
+
+        // 缓存结果
+        cache.Set(cacheKey, accounts, _cacheExpiration);
+
+        return accounts;
+    }
+
+    /// <summary>
+    /// 获取用户可见的账户列表（隐藏敏感信息）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="isAdmin">是否为管理员</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>可见的账户列表</returns>
+    public async Task<List<Accounts>> GetVisibleAccountsForUserAsync(
+        Guid userId,
+        bool isAdmin = false,
+        CancellationToken cancellationToken = default)
+    {
+        List<Accounts> accounts;
+
+        if (isAdmin)
+        {
+            // 管理员可以看到所有账户
+            accounts = await context.Accounts
+                .Include(a => a.UserBindings)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            // 普通用户只能看到自己拥有的、绑定的和全局账户
+            accounts = await (from account in context.Accounts
+                    where account.IsEnabled &&
+                          (account.OwnerUserId == userId ||
+                           account.IsGlobal ||
+                           context.UserAccountBindings.Any(b =>
+                               b.UserId == userId &&
+                               b.AccountId == account.Id &&
+                               b.IsActive))
+                    select account)
+                .Include(a => a.UserBindings.Where(b => b.UserId == userId))
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            // 对于非拥有的账户，隐藏敏感信息
+            foreach (var account in accounts.Where(a => a.OwnerUserId != userId))
+            {
+                SanitizeAccountForUser(account);
+            }
+        }
+
+        return accounts;
+    }
+
+    /// <summary>
+    /// 检查用户是否可以访问指定账户
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="accountId">账户ID</param>
+    /// <param name="isAdmin">是否为管理员</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否可以访问</returns>
+    public async Task<bool> CanUserAccessAccountAsync(
+        Guid userId,
+        string accountId,
+        bool isAdmin = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (isAdmin)
+        {
+            return true;
+        }
+
+        var account = await context.Accounts
+            .Include(a => a.UserBindings.Where(b => b.UserId == userId))
+            .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
+
+        if (account == null)
+        {
+            return false;
+        }
+
+        // 可以访问的条件：拥有者、全局账户或已绑定
+        return account.OwnerUserId == userId ||
+               account.IsGlobal ||
+               account.UserBindings.Any(b => b.IsActive);
+    }
+
+    /// <summary>
+    /// 更新用户账户绑定的优先级
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="accountId">账户ID</param>
+    /// <param name="newPriority">新优先级</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否成功更新</returns>
+    public async Task<bool> UpdateBindingPriorityAsync(
+        Guid userId,
+        string accountId,
+        int newPriority,
+        CancellationToken cancellationToken = default)
+    {
+        var binding = await context.UserAccountBindings
+            .FirstOrDefaultAsync(b => b.UserId == userId && b.AccountId == accountId, cancellationToken);
+
+        if (binding == null)
+        {
+            return false;
+        }
+
+        binding.Priority = newPriority;
+        binding.ModifiedAt = DateTime.Now;
+
+        await context.SaveAsync(cancellationToken);
+
+        // 清除相关缓存
+        await InvalidateUserCacheAsync(userId);
+
+        logger.LogInformation("用户 {UserId} 与账户 {AccountId} 的绑定优先级已更新为 {Priority}",
+            userId, accountId, newPriority);
+
+        return true;
+    }
+
+    /// <summary>
+    /// 批量更新用户账户绑定
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="bindings">绑定信息列表</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>更新结果</returns>
+    public async Task<bool> UpdateUserAccountBindingsAsync(
+        Guid userId,
+        List<UserAccountBindingRequest> bindings,
+        CancellationToken cancellationToken = default)
+    {
+        // 获取现有绑定
+        var existingBindings = await context.UserAccountBindings
+            .Where(b => b.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        // 删除不再需要的绑定
+        var bindingAccountIds = bindings.Select(b => b.AccountId).ToHashSet();
+        var bindingsToRemove = existingBindings.Where(b => !bindingAccountIds.Contains(b.AccountId)).ToList();
+
+        if (bindingsToRemove.Any())
+        {
+            context.UserAccountBindings.RemoveRange(bindingsToRemove);
+        }
+
+        // 更新或创建绑定
+        foreach (var bindingRequest in bindings)
+        {
+            var existingBinding = existingBindings.FirstOrDefault(b => b.AccountId == bindingRequest.AccountId);
+
+            if (existingBinding != null)
+            {
+                // 更新现有绑定
+                existingBinding.Priority = bindingRequest.Priority;
+                existingBinding.IsActive = bindingRequest.IsEnabled;
+                existingBinding.BindingType = bindingRequest.BindingType;
+                existingBinding.ModifiedAt = DateTime.Now;
+            }
+            else
+            {
+                // 创建新绑定
+                var newBinding = new UserAccountBinding
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    AccountId = bindingRequest.AccountId,
+                    BindingType = bindingRequest.BindingType,
+                    Priority = bindingRequest.Priority,
+                    IsActive = bindingRequest.IsEnabled,
+                    CreatedAt = DateTime.Now
+                };
+
+                context.UserAccountBindings.Add(newBinding);
+            }
+        }
+
+        await context.SaveAsync(cancellationToken);
+
+        // 清除相关缓存
+        await InvalidateUserCacheAsync(userId);
+
+        logger.LogInformation("用户 {UserId} 的账户绑定已批量更新", userId);
+        return true;
+    }
+
+    /// <summary>
+    /// 获取限流信息
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="accountId">账户ID</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>限流信息</returns>
+    public async Task<RateLimitInfoDto> GetRateLimitInfoAsync(
+        Guid userId,
+        string accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var account = await context.Accounts
+            .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
+
+        if (account?.RateLimitedUntil == null)
+        {
+            throw new ArgumentException($"账户 {accountId} 未处于限流状态");
+        }
+
+        // 获取用户可用的替代账户
+        var alternativeAccounts = await GetUserBoundAccountsAsync(userId, true, cancellationToken);
+        var availableAlternatives = alternativeAccounts
+            .Where(a => a.Id != accountId && a.IsEnabled && a.Status == "active")
+            .Select(a => a.Name)
+            .ToList();
+
+        var rateLimitedUntil = account.RateLimitedUntil.Value;
+        var retryAfterSeconds = Math.Max(0, (int)(rateLimitedUntil - DateTime.Now).TotalSeconds);
+
+        return new RateLimitInfoDto
+        {
+            RateLimitedUntil = rateLimitedUntil,
+            EstimatedRecoveryTime = rateLimitedUntil,
+            RetryAfterSeconds = retryAfterSeconds,
+            AlternativeAccounts = availableAlternatives
+        };
+    }
+
+    /// <summary>
+    /// 清除用户相关缓存
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    private async Task InvalidateUserCacheAsync(Guid userId)
+    {
+        await Task.Run(() =>
+        {
+            cache.Remove($"user_accounts_{userId}_true");
+            cache.Remove($"user_accounts_{userId}_false");
+        });
+    }
+
+    /// <summary>
+    /// 为用户隐藏账户敏感信息
+    /// </summary>
+    /// <param name="account">账户对象</param>
+    private static void SanitizeAccountForUser(Accounts account)
+    {
+        if (account.ApiKey != null && account.ApiKey.Length > 8)
+        {
+            account.ApiKey = account.ApiKey[..4] + "****" + account.ApiKey[^4..];
+        }
+
+        // 隐藏OAuth信息
+        account.ClaudeAiOauth = null;
+        account.GeminiOauth = null;
+
+        // 隐藏代理配置
+        account.Proxy = null;
+    }
+}

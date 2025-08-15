@@ -55,4 +55,6 @@ public class User : Entity<Guid>
     public virtual ICollection<ApiKey> ApiKeys { get; set; } = new List<ApiKey>();
     public virtual ICollection<RequestLog> RequestLogs { get; set; } = new List<RequestLog>();
     public virtual ICollection<StatisticsSnapshot> StatisticsSnapshots { get; set; } = new List<StatisticsSnapshot>();
+    public virtual ICollection<UserAccountBinding> AccountBindings { get; set; } = new List<UserAccountBinding>();
+    public virtual ICollection<Accounts> OwnedAccounts { get; set; } = new List<Accounts>();
 }

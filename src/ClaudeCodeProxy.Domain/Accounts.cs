@@ -3,7 +3,7 @@
 /// <summary>
 /// 账户信息实体类
 /// </summary>
-public sealed class Accounts : Entity<string>
+public class Accounts : Entity<string>
 {
     /// <summary>
     /// 平台类型：claude, claude-console, gemini, openai, thor
@@ -108,6 +108,31 @@ public sealed class Accounts : Entity<string>
     /// 使用次数统计
     /// </summary>
     public long UsageCount { get; set; } = 0;
+
+    /// <summary>
+    /// 是否为全局账户（所有用户都可以使用）
+    /// </summary>
+    public bool IsGlobal { get; set; } = false;
+
+    /// <summary>
+    /// 账户拥有者用户ID（私有账户时使用）
+    /// </summary>
+    public Guid? OwnerUserId { get; set; }
+
+    /// <summary>
+    /// 最大并发用户数（全局账户限制，0表示无限制）
+    /// </summary>
+    public int MaxConcurrentUsers { get; set; } = 0;
+
+    /// <summary>
+    /// 导航属性 - 账户拥有者
+    /// </summary>
+    public virtual User? Owner { get; set; }
+
+    /// <summary>
+    /// 导航属性 - 用户绑定关系
+    /// </summary>
+    public virtual ICollection<UserAccountBinding> UserBindings { get; set; } = new List<UserAccountBinding>();
 
     public bool IsClaudeConsole => Platform.Equals("claude-console", StringComparison.OrdinalIgnoreCase);
 

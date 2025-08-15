@@ -400,19 +400,56 @@ public partial class MessageService(
                 httpStatusCode: 429,
                 cancellationToken: cancellationToken);
 
-            // 返回429限流错误
+            // 返回429限流错误 - 增强版，包含替代账户信息
             httpContext.Response.StatusCode = 429;
             httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
 
-            await httpContext.Response.WriteAsJsonAsync(new
+            // 尝试获取限流详情和替代账户信息
+            try
             {
-                error = new
+                var userAccountBindingService = httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
+                var rateLimitInfo = await userAccountBindingService.GetRateLimitInfoAsync(
+                    apiKeyValue.UserId, account?.Id ?? string.Empty, httpContext.RequestAborted);
+
+                await httpContext.Response.WriteAsJsonAsync(new
                 {
-                    message = rateLimitEx.Message,
-                    type = "rate_limit_error",
-                    code = "429"
-                }
-            }, cancellationToken: cancellationToken);
+                    error = new
+                    {
+                        message = $"账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
+                        type = "rate_limit_error",
+                        code = "429",
+                        details = new
+                        {
+                            account_name = account?.Name,
+                            account_id = account?.Id,
+                            rate_limited_until = rateLimitInfo.RateLimitedUntil.ToString("yyyy-MM-dd HH:mm:ss"),
+                            retry_after_seconds = rateLimitInfo.RetryAfterSeconds,
+                            alternative_accounts = rateLimitInfo.AlternativeAccounts
+                        }
+                    }
+                }, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // 如果获取限流信息失败，返回基本错误信息
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                logger.LogWarning(ex, "获取限流信息失败，返回基本错误信息");
+
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        message = $"账户 {account?.Name} 已达到限流，请稍后重试",
+                        type = "rate_limit_error",
+                        code = "429",
+                        details = new
+                        {
+                            account_name = account?.Name,
+                            account_id = account?.Id
+                        }
+                    }
+                }, cancellationToken: cancellationToken);
+            }
         }
         catch (Exception ex)
         {
@@ -720,19 +757,56 @@ public partial class MessageService(
                 httpStatusCode: 429,
                 cancellationToken: cancellationToken);
 
-            // 返回429限流错误
+            // 返回429限流错误 - 增强版，包含替代账户信息
             httpContext.Response.StatusCode = 429;
             httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
 
-            await httpContext.Response.WriteAsJsonAsync(new
+            // 尝试获取限流详情和替代账户信息
+            try
             {
-                error = new
+                var userAccountBindingService = httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
+                var rateLimitInfo = await userAccountBindingService.GetRateLimitInfoAsync(
+                    apiKeyValue.UserId, account?.Id ?? string.Empty, httpContext.RequestAborted);
+
+                await httpContext.Response.WriteAsJsonAsync(new
                 {
-                    message = rateLimitEx.Message,
-                    type = "rate_limit_error",
-                    code = "429"
-                }
-            }, cancellationToken: cancellationToken);
+                    error = new
+                    {
+                        message = $"账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
+                        type = "rate_limit_error",
+                        code = "429",
+                        details = new
+                        {
+                            account_name = account?.Name,
+                            account_id = account?.Id,
+                            rate_limited_until = rateLimitInfo.RateLimitedUntil.ToString("yyyy-MM-dd HH:mm:ss"),
+                            retry_after_seconds = rateLimitInfo.RetryAfterSeconds,
+                            alternative_accounts = rateLimitInfo.AlternativeAccounts
+                        }
+                    }
+                }, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // 如果获取限流信息失败，返回基本错误信息
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                logger.LogWarning(ex, "获取限流信息失败，返回基本错误信息");
+
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        message = $"账户 {account?.Name} 已达到限流，请稍后重试",
+                        type = "rate_limit_error",
+                        code = "429",
+                        details = new
+                        {
+                            account_name = account?.Name,
+                            account_id = account?.Id
+                        }
+                    }
+                }, cancellationToken: cancellationToken);
+            }
         }
         catch (Exception ex)
         {

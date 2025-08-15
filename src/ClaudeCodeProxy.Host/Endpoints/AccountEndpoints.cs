@@ -128,14 +128,33 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 获取所有账户
+    /// 获取所有账户（支持用户权限过滤）
     /// </summary>
     private static async Task<Results<Ok<List<Accounts>>, BadRequest<string>>> GetAccounts(
-        AccountsService accountsService)
+        AccountsService accountsService,
+        UserAccountBindingService? bindingService = null,
+        HttpContext? httpContext = null)
     {
         try
         {
-            var accounts = await accountsService.GetAllAccountsAsync();
+            // TODO: 从JWT或用户上下文获取当前用户ID和管理员状态
+            // 这里暂时使用默认值，实际项目中应该从认证信息中获取
+            var userId = Guid.Empty; // 需要从认证信息获取
+            var isAdmin = true; // 需要从用户角色获取
+
+            List<Accounts> accounts;
+            
+            if (bindingService != null && userId != Guid.Empty && !isAdmin)
+            {
+                // 普通用户只能看到有权限访问的账户
+                accounts = await bindingService.GetVisibleAccountsForUserAsync(userId, isAdmin);
+            }
+            else
+            {
+                // 管理员可以看到所有账户
+                accounts = await accountsService.GetAllAccountsAsync();
+            }
+            
             return TypedResults.Ok(accounts);
         }
         catch (Exception ex)

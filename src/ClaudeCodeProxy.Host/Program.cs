@@ -285,6 +285,7 @@ public static class Program
         services.AddScoped<ApiKeyService>();
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
+        services.AddScoped<UserAccountBindingService>();
         services.AddScoped<RoleService>();
         services.AddScoped<OAuthService>();
         services.AddScoped<WalletService>();
@@ -374,6 +375,7 @@ public static class Program
         app.MapApiKeyEndpoints();
         app.MapAccountEndpoints();
         app.MapUserEndpoints();
+        app.MapUserAccountBindingEndpoints();
         app.MapRoleEndpoints();
         app.MapOAuthEndpoints();
         app.MapWalletEndpoints();

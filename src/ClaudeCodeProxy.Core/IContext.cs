@@ -33,6 +33,10 @@ public interface IContext
     
     public DbSet<Announcement> Announcements { get; set; }
 
+    public DbSet<UserAccountBinding> UserAccountBindings { get; set; }
+    
+    
+
     /// <summary>
     /// 保存上下文数据
     /// </summary>

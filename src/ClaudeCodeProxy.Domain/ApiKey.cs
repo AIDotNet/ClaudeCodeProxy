@@ -151,6 +151,17 @@ public class ApiKey : Entity<Guid>
     public string Service { get; set; } = "claude";
 
     /// <summary>
+    /// 默认绑定账户ID（优先使用此账户）
+    /// </summary>
+    public string? DefaultAccountId { get; set; }
+
+    /// <summary>
+    /// API Key绑定的账户优先级列表（JSON格式存储账户ID和优先级映射）
+    /// 格式：[{"AccountId": "xxx", "Priority": 1}, {"AccountId": "yyy", "Priority": 2}]
+    /// </summary>
+    public List<ApiKeyAccountBinding>? AccountBindings { get; set; }
+
+    /// <summary>
     /// 导航属性 - 关联用户
     /// </summary>
     public virtual User User { get; set; } = null!;
@@ -288,6 +299,50 @@ public class ApiKey : Entity<Guid>
             TotalCostLimit = TotalCostLimit
         };
     }
+
+    /// <summary>
+    /// 获取绑定的账户ID列表（按优先级排序）
+    /// </summary>
+    /// <returns>按优先级排序的账户ID列表</returns>
+    public List<string> GetBoundAccountIds()
+    {
+        var accountIds = new List<string>();
+        
+        // 首先添加默认账户
+        if (!string.IsNullOrEmpty(DefaultAccountId))
+        {
+            accountIds.Add(DefaultAccountId);
+        }
+        
+        // 添加绑定的账户（按优先级排序，排除默认账户）
+        if (AccountBindings != null && AccountBindings.Count > 0)
+        {
+            var sortedBindings = AccountBindings
+                .Where(b => b.IsEnabled && b.AccountId != DefaultAccountId)
+                .OrderBy(b => b.Priority)
+                .Select(b => b.AccountId)
+                .ToList();
+                
+            accountIds.AddRange(sortedBindings);
+        }
+        
+        return accountIds;
+    }
+
+    /// <summary>
+    /// 检查是否绑定了指定账户
+    /// </summary>
+    /// <param name="accountId">账户ID</param>
+    /// <returns>是否绑定了该账户</returns>
+    public bool IsBoundToAccount(string accountId)
+    {
+        if (DefaultAccountId == accountId)
+        {
+            return true;
+        }
+        
+        return AccountBindings?.Any(b => b.IsEnabled && b.AccountId == accountId) == true;
+    }
 }
 
 /// <summary>
@@ -304,4 +359,25 @@ public class CostUsageInfo
     public decimal MonthlyCostLimit { get; set; }
     public decimal TotalCostUsed { get; set; }
     public decimal TotalCostLimit { get; set; }
+}
+
+/// <summary>
+/// API Key账户绑定关系
+/// </summary>
+public class ApiKeyAccountBinding
+{
+    /// <summary>
+    /// 账户ID
+    /// </summary>
+    public string AccountId { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 优先级 (1-100)，数字越小优先级越高
+    /// </summary>
+    public int Priority { get; set; } = 50;
+    
+    /// <summary>
+    /// 是否启用
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
 }

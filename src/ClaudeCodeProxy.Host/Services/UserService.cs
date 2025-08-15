@@ -12,7 +12,7 @@ namespace ClaudeCodeProxy.Host.Services;
 /// <summary>
 /// 用户服务
 /// </summary>
-public class UserService(IContext context,IMapper mapper)
+public class UserService(IContext context,IMapper mapper, UserAccountBindingService? bindingService = null)
 {
     /// <summary>
     /// 获取所有用户（分页）
@@ -257,6 +257,12 @@ public class UserService(IContext context,IMapper mapper)
         user.RoleId = request.RoleId;
 
         await context.SaveAsync();
+
+        // 如果提供了账户绑定信息，则更新绑定关系
+        if (request.AccountBindings != null && bindingService != null)
+        {
+            await bindingService.UpdateUserAccountBindingsAsync(id, request.AccountBindings);
+        }
 
         return await GetUserByIdAsync(id);
     }

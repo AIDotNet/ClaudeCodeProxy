@@ -303,7 +303,45 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         try
         {
-            // 1. 如果API Key绑定了专属Claude OAuth账户，优先使用
+            // 1. 检查API Key的新绑定账户系统（最高优先级）
+            var apiKeyBoundAccountIds = apiKeyValue.GetBoundAccountIds();
+            if (apiKeyBoundAccountIds.Any())
+            {
+                foreach (var accountId in apiKeyBoundAccountIds)
+                {
+                    var boundAccount = await GetAccountByIdAsync(accountId, cancellationToken);
+                    if (boundAccount != null && await IsAccountAvailableAsync(boundAccount, cancellationToken) &&
+                        await DoesAccountSupportModelAsync(boundAccount, requestedModel, cancellationToken))
+                    {
+                        logger.LogInformation(
+                            "🎯 使用API Key绑定的账户: {AccountName} ({AccountId}) for API key {ApiKeyName}",
+                            boundAccount.Name, accountId, apiKeyValue.Name);
+
+                        await UpdateLastUsedAsync(boundAccount.Id, cancellationToken);
+                        return boundAccount;
+                    }
+                }
+                
+                logger.LogWarning("⚠️ API Key绑定的账户都不可用或不支持模型 {Model}，回退到用户绑定账户", requestedModel);
+            }
+
+            // 2. 检查用户绑定的账户（第二优先级）
+            var userBoundAccounts = await GetUserBoundAccountsForApiKeyAsync(apiKeyValue, requestedModel, cancellationToken);
+            if (userBoundAccounts.Any())
+            {
+                var selectedUserAccount = userBoundAccounts.FirstOrDefault(a => a.Status == "active" && a.IsEnabled);
+                if (selectedUserAccount != null)
+                {
+                    logger.LogInformation(
+                        "🎯 使用用户绑定的账户: {AccountName} ({AccountId}) for user {UserId}",
+                        selectedUserAccount.Name, selectedUserAccount.Id, apiKeyValue.UserId);
+
+                    await UpdateLastUsedAsync(selectedUserAccount.Id, cancellationToken);
+                    return selectedUserAccount;
+                }
+            }
+
+            // 3. 如果API Key绑定了专属Claude OAuth账户，尝试使用（向后兼容）
             if (!string.IsNullOrEmpty(apiKeyValue.ClaudeAccountId))
             {
                 var boundAccount = await GetAccountByIdAsync(apiKeyValue.ClaudeAccountId, cancellationToken);
@@ -322,7 +360,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 }
             }
 
-            // 2. 检查Claude Console账户绑定
+            // 4. 检查Claude Console账户绑定（向后兼容）
             if (!string.IsNullOrEmpty(apiKeyValue.ClaudeConsoleAccountId))
             {
                 var boundConsoleAccount =
@@ -344,7 +382,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 }
             }
 
-            // 3. 如果有会话哈希，检查是否有已映射的账户
+            // 5. 如果有会话哈希，检查是否有已映射的账户
             if (!string.IsNullOrEmpty(sessionHash))
             {
                 var mappedAccount = await GetSessionMappingAsync(sessionHash, cancellationToken);
@@ -773,5 +811,60 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.LastUsedAt, DateTime.Now)
                 .SetProperty(a => a.UsageCount, a => a.UsageCount + 1)
                 .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
+    }
+
+    /// <summary>
+    /// 获取用户绑定的账户（用于API Key选择）
+    /// </summary>
+    private async Task<List<Accounts>> GetUserBoundAccountsForApiKeyAsync(
+        ApiKey apiKeyValue,
+        string? requestedModel = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = from account in context.Accounts
+                    where account.IsEnabled && 
+                          (account.IsGlobal || 
+                           context.UserAccountBindings.Any(b => 
+                               b.UserId == apiKeyValue.UserId && 
+                               b.AccountId == account.Id && 
+                               b.IsActive))
+                    select account;
+
+        var accounts = await query
+            .Include(a => a.UserBindings.Where(b => b.UserId == apiKeyValue.UserId))
+            .OrderBy(a => a.UserBindings.Any(b => b.UserId == apiKeyValue.UserId) ? 
+                          a.UserBindings.First(b => b.UserId == apiKeyValue.UserId).Priority : 
+                          int.MaxValue)
+            .ThenBy(a => a.Priority)
+            .ToListAsync(cancellationToken);
+
+        // 过滤限流账户
+        accounts = accounts.Where(x =>
+            x.Status == "active" &&
+            (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now)).ToList();
+
+        // 如果指定了模型，进一步过滤支持该模型的账户
+        if (!string.IsNullOrEmpty(requestedModel))
+        {
+            accounts = accounts.Where(account => DoesAccountSupportModel(account, requestedModel)).ToList();
+        }
+
+        return accounts;
+    }
+
+    /// <summary>
+    /// 异步检查账户是否支持指定模型
+    /// </summary>
+    private async Task<bool> DoesAccountSupportModelAsync(
+        Accounts account, 
+        string? model, 
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(model))
+        {
+            return true;
+        }
+
+        return await Task.FromResult(DoesAccountSupportModel(account, model));
     }
 }

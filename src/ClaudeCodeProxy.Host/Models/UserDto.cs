@@ -62,6 +62,11 @@ public class UpdateUserRequest
     public bool IsActive { get; set; }
     public bool EmailConfirmed { get; set; }
     public int RoleId { get; set; }
+    
+    /// <summary>
+    /// 账户绑定信息（可选）
+    /// </summary>
+    public List<UserAccountBindingRequest>? AccountBindings { get; set; }
 }
 
 /// <summary>
