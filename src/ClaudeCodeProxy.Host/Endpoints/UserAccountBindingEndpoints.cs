@@ -1,3 +1,4 @@
+using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Filters;
 using ClaudeCodeProxy.Host.Models;
@@ -19,9 +20,9 @@ public static class UserAccountBindingEndpoints
 
         // 获取用户的账户绑定列表
         group.MapGet("/", async (
-            Guid userId, 
-            UserAccountBindingService bindingService, 
-            bool includeGlobal = true) =>
+                Guid userId,
+                UserAccountBindingService bindingService,
+                bool includeGlobal = true) =>
             {
                 var accounts = await bindingService.GetUserBoundAccountsAsync(userId, includeGlobal);
                 return Results.Ok(new ApiResponse<List<Accounts>>
@@ -37,14 +38,14 @@ public static class UserAccountBindingEndpoints
 
         // 绑定用户到账户
         group.MapPost("/", async (
-            Guid userId,
-            BindAccountRequest request,
-            UserAccountBindingService bindingService) =>
+                Guid userId,
+                BindAccountRequest request,
+                UserAccountBindingService bindingService) =>
             {
                 try
                 {
                     var binding = await bindingService.BindUserToAccountAsync(
-                        userId, 
+                        userId,
                         request.AccountId,
                         request.Priority,
                         request.BindingType,
@@ -82,12 +83,12 @@ public static class UserAccountBindingEndpoints
 
         // 解除用户和账户的绑定
         group.MapDelete("/{accountId}", async (
-            Guid userId,
-            string accountId,
-            UserAccountBindingService bindingService) =>
+                Guid userId,
+                string accountId,
+                UserAccountBindingService bindingService) =>
             {
                 var result = await bindingService.UnbindUserFromAccountAsync(userId, accountId);
-                
+
                 if (!result)
                 {
                     return Results.NotFound(new ApiResponse<object>
@@ -110,13 +111,13 @@ public static class UserAccountBindingEndpoints
 
         // 更新账户绑定优先级
         group.MapPut("/{accountId}/priority", async (
-            Guid userId,
-            string accountId,
-            int priority,
-            UserAccountBindingService bindingService) =>
+                Guid userId,
+                string accountId,
+                int priority,
+                UserAccountBindingService bindingService) =>
             {
                 var result = await bindingService.UpdateBindingPriorityAsync(userId, accountId, priority);
-                
+
                 if (!result)
                 {
                     return Results.NotFound(new ApiResponse<object>
@@ -139,14 +140,14 @@ public static class UserAccountBindingEndpoints
 
         // 批量更新用户账户绑定
         group.MapPut("/", async (
-            Guid userId,
-            UpdateUserAccountBindingsRequest request,
-            UserAccountBindingService bindingService) =>
+                Guid userId,
+                UpdateUserAccountBindingsRequest request,
+                UserAccountBindingService bindingService) =>
             {
                 try
                 {
                     var result = await bindingService.UpdateUserAccountBindingsAsync(userId, request.AccountBindings);
-                    
+
                     return Results.Ok(new ApiResponse<object>
                     {
                         Success = true,
@@ -169,15 +170,14 @@ public static class UserAccountBindingEndpoints
 
         // 获取用户可见的所有账户（用于绑定选择）
         group.MapGet("/available-accounts", async (
-            Guid userId,
-            UserAccountBindingService bindingService,
-            HttpContext httpContext) =>
+                Guid userId,
+                UserAccountBindingService bindingService,
+                IUserContext userContext) =>
             {
-                // TODO: 从用户身份获取是否为管理员，这里暂时设为false
-                var isAdmin = false; 
-                
+                var isAdmin = userContext.IsAdmin();
+
                 var accounts = await bindingService.GetVisibleAccountsForUserAsync(userId, isAdmin);
-                
+
                 return Results.Ok(new ApiResponse<List<Accounts>>
                 {
                     Success = true,
@@ -191,15 +191,15 @@ public static class UserAccountBindingEndpoints
 
         // 检查用户是否可以访问指定账户
         group.MapGet("/check-access/{accountId}", async (
-            Guid userId,
-            string accountId,
-            UserAccountBindingService bindingService) =>
+                Guid userId,
+                string accountId,
+                IUserContext userContext,
+                UserAccountBindingService bindingService) =>
             {
-                // TODO: 从用户身份获取是否为管理员，这里暂时设为false
-                var isAdmin = false;
-                
+                var isAdmin = userContext.IsAdmin();
+
                 var canAccess = await bindingService.CanUserAccessAccountAsync(userId, accountId, isAdmin);
-                
+
                 return Results.Ok(new ApiResponse<object>
                 {
                     Success = true,

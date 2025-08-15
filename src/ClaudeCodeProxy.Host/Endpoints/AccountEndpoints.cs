@@ -1,3 +1,4 @@
+using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Services;
 using ClaudeCodeProxy.Host.Models;
@@ -132,15 +133,14 @@ public static class AccountEndpoints
     /// </summary>
     private static async Task<Results<Ok<List<Accounts>>, BadRequest<string>>> GetAccounts(
         AccountsService accountsService,
+        IUserContext userContext,
         UserAccountBindingService? bindingService = null,
         HttpContext? httpContext = null)
     {
         try
         {
-            // TODO: 从JWT或用户上下文获取当前用户ID和管理员状态
-            // 这里暂时使用默认值，实际项目中应该从认证信息中获取
-            var userId = Guid.Empty; // 需要从认证信息获取
-            var isAdmin = true; // 需要从用户角色获取
+            var userId = userContext.GetCurrentUserId()!.Value; // 需要从认证信息获取
+            var isAdmin = userContext.IsAdmin();
 
             List<Accounts> accounts;
             

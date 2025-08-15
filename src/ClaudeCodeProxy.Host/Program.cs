@@ -286,6 +286,7 @@ public static class Program
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
         services.AddScoped<UserAccountBindingService>();
+        services.AddScoped<CurrentUserService>();
         services.AddScoped<RoleService>();
         services.AddScoped<OAuthService>();
         services.AddScoped<WalletService>();
