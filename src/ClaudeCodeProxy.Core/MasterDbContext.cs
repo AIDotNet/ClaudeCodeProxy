@@ -22,6 +22,7 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
     public DbSet<InvitationRecord> InvitationRecords { get; set; }
     public DbSet<InvitationSettings> InvitationSettings { get; set; }
     public DbSet<Announcement> Announcements { get; set; }
+    public DbSet<UserAccountBinding> UserAccountBindings { get; set; }
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
