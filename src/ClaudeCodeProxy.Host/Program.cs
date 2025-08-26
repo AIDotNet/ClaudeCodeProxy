@@ -276,6 +276,8 @@ public static class Program
         services.AddMemoryCache();
 
         services.AddScoped<OAuthHelper>();
+        services.AddScoped<OpenAiOAuthHelper>();
+        services.AddSingleton<IOAuthSessionService, InMemoryOAuthSessionService>();
 
         services.AddScoped<SessionHelper>();
 

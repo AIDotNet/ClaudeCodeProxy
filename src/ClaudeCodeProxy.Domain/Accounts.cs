@@ -74,6 +74,12 @@ public class Accounts : Entity<string>
     public string? GeminiOauth { get; set; }
 
     /// <summary>
+    /// OpenAI OAuth信息（OpenAI平台使用）
+    /// JSON格式存储OAuth令牌信息
+    /// </summary>
+    public OpenAiOauth? OpenAiOauth { get; set; }
+
+    /// <summary>
     /// 代理配置信息
     /// JSON格式存储代理设置
     /// </summary>

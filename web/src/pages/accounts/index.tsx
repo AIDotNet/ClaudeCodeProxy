@@ -267,19 +267,40 @@ export default function AccountsPage() {
                   {/* OpenAI 特定信息 */}
                   {account.platform === 'openai' && (
                     <>
-                      {account.apiKey && (
+                      {account.openAiOauth ? (
                         <div>
                           <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
                             <Key className="w-4 h-4" />
-                            API Key
+                            OpenAI OAuth 账户
                           </p>
-                          <p className="font-mono text-sm bg-muted p-2 rounded break-all">
-                            {account.apiKey.length > 50 
-                              ? `${account.apiKey.substring(0, 20)}...${account.apiKey.substring(account.apiKey.length - 20)}`
-                              : account.apiKey
-                            }
-                          </p>
+                          <div className="bg-muted p-3 rounded">
+                            {account.openAiOauth.userInfo && (
+                              <div className="mb-2">
+                                <p className="text-sm"><strong>用户:</strong> {account.openAiOauth.userInfo.name || account.openAiOauth.userInfo.email}</p>
+                                <p className="text-sm"><strong>邮箱:</strong> {account.openAiOauth.userInfo.email}</p>
+                              </div>
+                            )}
+                            <p className="text-sm"><strong>权限范围:</strong> {account.openAiOauth.scopes.join(', ')}</p>
+                            <p className="text-sm"><strong>过期时间:</strong> {new Date(account.openAiOauth.expiresAt * 1000).toLocaleString()}</p>
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {account.apiKey && (
+                            <div>
+                              <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
+                                <Key className="w-4 h-4" />
+                                API Key
+                              </p>
+                              <p className="font-mono text-sm bg-muted p-2 rounded break-all">
+                                {account.apiKey.length > 50 
+                                  ? `${account.apiKey.substring(0, 20)}...${account.apiKey.substring(account.apiKey.length - 20)}`
+                                  : account.apiKey
+                                }
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                       {account.baseUrl && (
                         <div>

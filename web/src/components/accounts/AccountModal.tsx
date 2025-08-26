@@ -179,7 +179,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
     } else if (form.platform === 'openai') {
       setForm(prev => ({ 
         ...prev, 
-        addType: 'manual',
+        addType: 'oauth',
         apiUrl: prev.apiUrl || 'https://api.openai.com/v1'
       }));
     } else if (form.platform === 'thor') {
@@ -261,6 +261,11 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
           apiUrl: tokenInfo.baseUrl || 'https://api.token-ai.cn/v1',
           priority: form.priority || 50
         });
+      } else if (form.platform === 'openai') {
+        Object.assign(data, {
+          openAiOauth: tokenInfo.openAiOauth || tokenInfo,
+          priority: form.priority || 50
+        });
       }
 
       let result;
@@ -269,6 +274,8 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
       } else if (form.platform === 'gemini') {
         result = await apiService.createGeminiAccount(data);
       } else if (form.platform === 'thor') {
+        result = await apiService.createAccount(data);
+      } else if (form.platform === 'openai') {
         result = await apiService.createAccount(data);
       }
 
@@ -685,7 +692,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
               )}
 
               {/* 添加方式 */}
-              {!isEdit && form.platform !== 'claude-console' && form.platform !== 'openai' && form.platform !== 'thor' && (
+              {!isEdit && form.platform !== 'claude-console' && form.platform !== 'thor' && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">添加方式</Label>
                   <div className="flex gap-4">
@@ -698,7 +705,11 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('addType', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm text-foreground">{(form.platform as any) === 'thor' ? 'Token 快捷获取 (推荐)' : 'OAuth 授权 (推荐)'}</span>
+                      <span className="text-sm text-foreground">
+                        {form.platform === 'openai' ? 'OAuth 授权 (推荐)' : 
+                         form.platform === 'thor' ? 'Token 快捷获取 (推荐)' : 
+                         'OAuth 授权 (推荐)'}
+                      </span>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input 
@@ -709,7 +720,9 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('addType', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm text-foreground">手动输入 Access Token</span>
+                      <span className="text-sm text-foreground">
+                        {form.platform === 'openai' ? '手动输入 API Key' : '手动输入 Access Token'}
+                      </span>
                     </label>
                   </div>
                 </div>
@@ -835,8 +848,8 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                 </div>
               )}
 
-              {/* OpenAI 特定字段 */}
-              {form.platform === 'openai' && !isEdit && (
+              {/* OpenAI 手动配置字段 - 仅在选择manual方式时显示 */}
+              {form.platform === 'openai' && form.addType === 'manual' && !isEdit && (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Base URL</Label>
@@ -885,6 +898,26 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                     />
                   </div>
 
+                </div>
+              )}
+
+              {/* OpenAI OAuth 说明 - 仅在选择oauth方式时显示 */}
+              {form.platform === 'openai' && form.addType === 'oauth' && !isEdit && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <Zap className="h-5 w-5 text-slate-600 dark:text-slate-400 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-slate-900 dark:text-slate-100">OpenAI OAuth 授权</h4>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                          通过 OpenAI 官方 OAuth 授权方式安全地绑定您的 OpenAI 账户，无需手动输入 API Key。
+                        </p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                          点击下一步后将引导您完成 OAuth 授权流程
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -949,7 +982,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
           {/* 步骤2: OAuth授权 */}
           {oauthStep === 2 && form.addType === 'oauth' && (
             <OAuthFlow
-              platform={form.platform as 'claude' | 'gemini' | 'thor'}
+              platform={form.platform as 'claude' | 'gemini' | 'thor' | 'openai'}
               proxy={form.proxy}
               onSuccess={handleOAuthSuccess}
               onBack={() => setOauthStep(1)}

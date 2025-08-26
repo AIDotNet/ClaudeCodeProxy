@@ -302,6 +302,20 @@ interface Account {
     username?: string;
     password?: string;
   };
+  openAiOauth?: {
+    accessToken: string;
+    refreshToken?: string;
+    idToken?: string;
+    expiresAt: number;
+    scopes: string[];
+    tokenType: string;
+    userInfo?: {
+      id: string;
+      email: string;
+      name?: string;
+      picture?: string;
+    };
+  };
 }
 
 interface OAuthTokenInfo {
@@ -318,6 +332,20 @@ interface OAuthTokenInfo {
     token_type: string;
     expiry_date: number;
   };
+  openAiOauth?: {
+    accessToken: string;
+    refreshToken?: string;
+    idToken?: string;
+    expiresAt: number;
+    scopes: string[];
+    tokenType: string;
+    userInfo?: {
+      id: string;
+      email: string;
+      name?: string;
+      picture?: string;
+    };
+  };
   tokens?: any;
   // Thor platform support
   apiKey?: string;
@@ -327,6 +355,9 @@ interface OAuthTokenInfo {
 interface AuthUrlResponse {
   authUrl: string;
   sessionId: string;
+  state?: string;
+  codeVerifier?: string;
+  message?: string;
 }
 
 class ApiService {
@@ -682,6 +713,45 @@ class ApiService {
     return this.request<any>('/auth/gemini/exchange-code', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async generateOpenAiAuthUrl(data?: { proxy?: any }): Promise<AuthUrlResponse> {
+    const response = await this.request<AuthUrlResponse>('/accounts/openai/oauth/generate-auth-url', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+    
+    // 将OAuth会话数据保存到sessionStorage
+    if (response.sessionId) {
+      const sessionData = {
+        codeVerifier: response.codeVerifier || response.sessionId,
+        state: response.state || response.sessionId,
+        createdAt: Date.now()
+      };
+      sessionStorage.setItem(`openai_oauth_${response.sessionId}`, JSON.stringify(sessionData));
+    }
+    
+    return response;
+  }
+
+  async exchangeOpenAiCode(data: {
+    code: string;
+    sessionId: string;
+    proxy?: any;
+  }): Promise<any> {
+    // 清理sessionStorage中的OAuth会话数据
+    sessionStorage.removeItem(`openai_oauth_${data.sessionId}`);
+
+    return this.request<any>('/accounts/openai/oauth/exchange-code', {
+      method: 'POST',
+      body: JSON.stringify({
+        authorizationCode: data.code,
+        sessionId: data.sessionId,
+        accountName: 'OpenAI账户',
+        description: 'OAuth授权的OpenAI账户',
+        proxy: data.proxy
+      }),
     });
   }
 

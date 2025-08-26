@@ -221,7 +221,7 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
                 .HasConversion(
                     v => v == null || v.Count == 0
                         ? null
-                        : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                        : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
                     v => string.IsNullOrEmpty(v)
                         ? null
                         : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()))
@@ -231,12 +231,24 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
                 .HasConversion(
                     v => v == null
                         ? null
-                        : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                        : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
                     v => v == null
                         ? null
                         : JsonSerializer.Deserialize<ClaudeAiOauth>(v,
                             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }))
                 .HasColumnType("TEXT");
+
+            entity.Property(x => x.OpenAiOauth)
+                .HasConversion(
+                    v => v == null
+                        ? null
+                        : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
+                    v => v == null
+                        ? null
+                        : JsonSerializer.Deserialize<OpenAiOauth>(v,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }))
+                .HasColumnType("TEXT");
+
 
             entity.Property(e => e.GeminiOauth)
                 .HasColumnType("TEXT");
@@ -245,7 +257,7 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
                 .HasConversion(
                     v => v == null
                         ? null
-                        : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                        : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
                     v => v == null
                         ? null
                         : JsonSerializer.Deserialize<ProxyConfig>(v,
@@ -618,7 +630,7 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
                         : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
                     v => string.IsNullOrEmpty(v)
                         ? new List<string>()
-                        : JsonSerializer.Deserialize<List<string>>(v,JsonSerializerOptions.Web))
+                        : JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Web))
                 .HasColumnType("TEXT");
 
             // 审计字段配置
@@ -1397,10 +1409,10 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
                 .HasConversion(
                     v => v == null || v.Count == 0
                         ? null
-                        : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                        : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
                     v => string.IsNullOrEmpty(v)
                         ? null
-                        : JsonSerializer.Deserialize<List<ApiKeyAccountBinding>>(v, new JsonSerializerOptions()))
+                        : JsonSerializer.Deserialize<List<ApiKeyAccountBinding>>(v, JsonSerializerOptions.Web))
                 .HasColumnType("TEXT");
 
             // 为新字段添加索引

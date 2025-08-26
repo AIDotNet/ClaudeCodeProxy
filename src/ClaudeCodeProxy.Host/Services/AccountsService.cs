@@ -67,6 +67,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             ApiUrl = request.ApiUrl,
             Proxy = request.Proxy,
             ClaudeAiOauth = request.ClaudeAiOauth,
+            OpenAiOauth = request.OpenAiOauth,
             Priority = request.Priority,
             AccountType = request.AccountType,
         };
@@ -133,6 +134,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         }
 
         account.ClaudeAiOauth = request.ClaudeAiOauth;
+        account.OpenAiOauth = request.OpenAiOauth;
 
         if (request.GeminiOauth != null)
         {
@@ -710,6 +712,14 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 await UpdateAccountLastUsedAsync(account.Id, cancellationToken);
                 return account.ApiKey;
             }
+            
+            if (account.Platform == "openai" && !string.IsNullOrEmpty(account.OpenAiOauth?.AccessToken))
+            {
+                // 更新最后使用时间
+                await UpdateAccountLastUsedAsync(account.Id, cancellationToken);
+                return account.OpenAiOauth.AccessToken;
+            }
+
 
             throw new InvalidOperationException($"无法为账户 {account.Id} ({account.Platform}) 获取有效的访问令牌");
         }

@@ -239,7 +239,7 @@ public static class UserEndpoints
                         });
                     }
                 })
-            .WithName("UnbindUserFromAccount")
+            .WithName("UnbindUserAccountBinding")
             .WithSummary("解除用户账户绑定")
             .Produces<ApiResponse<object>>()
             .Produces<ApiResponse<object>>(400)

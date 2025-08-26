@@ -15,6 +15,7 @@ public record CreateAccountRequest(
     string? UserAgent = null,
     ProxyConfig? Proxy = null,
     ClaudeAiOauth? ClaudeAiOauth = null,
+    OpenAiOauth? OpenAiOauth = null,
     int Priority = 0
 );
 
@@ -33,6 +34,7 @@ public record UpdateAccountRequest(
     int? RateLimitDuration = null,
     Dictionary<string, string>? SupportedModels = null,
     ClaudeAiOauth? ClaudeAiOauth = null,
+    OpenAiOauth? OpenAiOauth = null,
     object? GeminiOauth = null,
     ProxyConfig? Proxy = null,
     bool? IsActive = null

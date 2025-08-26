@@ -139,6 +139,15 @@ public class ModelPricing
             CacheReadPrice = 0.00000015m,
             Currency = "USD",
             Description = "Kimi K2 - $0.0000006/输入, $0.0000025/输出"
+        },
+        new ModelPricing
+        {
+            Model = "gpt-5",
+            InputPrice = 0.00000125m,
+            OutputPrice = 0.00001m,
+            CacheReadPrice = 0.0000015m,
+            Currency = "USD",
+            Description = "gpt-5 - $0.00125/输入, $0.01m/输出"
         }
     };
 

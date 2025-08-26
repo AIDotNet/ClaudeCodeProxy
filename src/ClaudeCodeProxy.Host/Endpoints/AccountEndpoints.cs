@@ -2,6 +2,7 @@ using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Services;
 using ClaudeCodeProxy.Host.Models;
+using ClaudeCodeProxy.Host.Helper;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
@@ -125,6 +126,21 @@ public static class AccountEndpoints
             .WithSummary("更新Gemini账户")
             .Produces<Accounts>()
             .Produces(404)
+            .Produces(400);
+
+        // OpenAI OAuth相关端点
+        // 生成OpenAI OAuth授权链接
+        group.MapPost("/openai/oauth/generate-auth-url", GenerateOpenAiOAuthUrl)
+            .WithName("GenerateOpenAiOAuthUrl")
+            .WithSummary("生成OpenAI OAuth授权链接")
+            .Produces<object>(200)
+            .Produces(400);
+
+        // 处理OpenAI OAuth授权码
+        group.MapPost("/openai/oauth/exchange-code", ExchangeOpenAiOAuthCode)
+            .WithName("ExchangeOpenAiOAuthCode")
+            .WithSummary("处理OpenAI OAuth授权码并创建账户")
+            .Produces<Accounts>(201)
             .Produces(400);
     }
 
@@ -474,6 +490,107 @@ public static class AccountEndpoints
         catch (Exception ex)
         {
             return TypedResults.BadRequest($"更新Gemini账户失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 生成OpenAI OAuth授权链接
+    /// </summary>
+    private static async Task<Results<Ok<object>, BadRequest<string>>> GenerateOpenAiOAuthUrl(
+        GenerateOpenAiOAuthUrlRequest request,
+        OpenAiOAuthHelper oAuthHelper,
+        IOAuthSessionService sessionService)
+    {
+        try
+        {
+            var oAuthParams = oAuthHelper.GenerateOAuthParams(request.ClientId, request.RedirectUri);
+            
+            // 将OAuth会话数据存储到缓存中，用于后续验证
+            var sessionData = new OAuthSessionData
+            {
+                CodeVerifier = oAuthParams.CodeVerifier,
+                State = oAuthParams.State,
+                CodeChallenge = oAuthParams.CodeChallenge,
+                Proxy = request.Proxy,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10) // 10分钟过期
+            };
+            
+            // 存储会话数据
+            sessionService.StoreSession(oAuthParams.State, sessionData);
+            
+            return TypedResults.Ok((object)new
+            {
+                authUrl = oAuthParams.AuthUrl,
+                sessionId = oAuthParams.State, // 使用state作为sessionId
+                state = oAuthParams.State,
+                codeVerifier = oAuthParams.CodeVerifier,
+                message = "请复制此链接到浏览器中进行授权，授权完成后将获得Authorization Code"
+            });
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest($"生成OpenAI OAuth授权链接失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 处理OpenAI OAuth授权码并创建账户
+    /// </summary>
+    private static async Task<Results<Created<Accounts>, BadRequest<string>>> ExchangeOpenAiOAuthCode(
+        ExchangeOpenAiOAuthCodeRequest request,
+        OpenAiOAuthHelper oAuthHelper,
+        IOAuthSessionService sessionService,
+        AccountsService accountsService)
+    {
+        try
+        {
+            // 从缓存中获取OAuth会话数据
+            var sessionData = sessionService.GetSession(request.SessionId);
+            if (sessionData == null)
+            {
+                return TypedResults.BadRequest("OAuth会话已过期或无效，请重新获取授权链接");
+            }
+
+            // 使用会话数据中的参数进行token交换
+            var tokenResponse = await oAuthHelper.ExchangeCodeForTokensAsync(
+                request.AuthorizationCode,
+                sessionData.CodeVerifier,
+                sessionData.State,
+                null, // 使用默认ClientId
+                null, // 使用默认RedirectUri
+                sessionData.Proxy ?? request.Proxy);
+
+            // 获取用户信息
+            var userInfo = await oAuthHelper.GetUserInfoAsync(tokenResponse.AccessToken, sessionData.Proxy ?? request.Proxy);
+
+            // 格式化OAuth凭据
+            var oauthCredentials = oAuthHelper.FormatOpenAiCredentials(tokenResponse, userInfo);
+
+            // 创建账户
+            var createRequest = new CreateAccountRequest(
+                Name: request.AccountName ?? $"OpenAI - {userInfo.Email}",
+                Description: request.Description ?? $"OpenAI账户 - {userInfo.Name}",
+                ApiKey: "", // OpenAI OAuth不需要传统的API Key
+                ApiUrl: "", // OpenAI OAuth不需要传统的API URL
+                AccountType: request.AccountType ?? "shared",
+                UserAgent: null,
+                Proxy: sessionData.Proxy ?? request.Proxy,
+                ClaudeAiOauth: null,
+                OpenAiOauth: oauthCredentials,
+                Priority: request.Priority ?? 50
+            );
+
+            var account = await accountsService.CreateAccountAsync("openai", createRequest);
+            
+            // 清理已使用的会话数据
+            sessionService.RemoveSession(request.SessionId);
+            
+            return TypedResults.Created($"/api/accounts/{account.Id}", account);
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest($"处理OpenAI OAuth授权失败: {ex.Message}");
         }
     }
 }

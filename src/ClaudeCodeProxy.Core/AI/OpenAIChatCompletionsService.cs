@@ -34,6 +34,11 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
             };
         }
 
+        if (string.IsNullOrEmpty(options?.Address))
+        {
+            options.Address = "https://api.openai.com/v1";
+        }
+
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).PostJsonAsync(
             options?.Address.TrimEnd('/') + "/chat/completions",
             chatCompletionCreate, options.ApiKey, headers).ConfigureAwait(false);

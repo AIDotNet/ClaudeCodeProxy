@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="ClaudeCodeProxy" uuid="e64e934f-f08e-4b51-a248-d725fac63fbb">
+    <data-source source="LOCAL" name="ClaudeCodeProxy" uuid="3180e4d6-676a-4926-a5d2-0b4786372d07">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:C:\Users\Administrator\RiderProjects\ClaudeCodeProxy\src\ClaudeCodeProxy.Host\ClaudeCodeProxy.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:D:\code\ClaudeCodeProxy\src\ClaudeCodeProxy.Host\ClaudeCodeProxy.db</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>
@@ -16,6 +16,9 @@
         </library>
         <library>
           <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.45.1/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar</url>
+        </library>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.43.0/org/xerial/sqlite-jdbc/3.43.0.0/sqlite-jdbc-3.43.0.0.jar</url>
         </library>
       </libraries>
     </data-source>
