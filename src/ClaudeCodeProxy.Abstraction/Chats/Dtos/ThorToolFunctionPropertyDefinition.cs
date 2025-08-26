@@ -75,7 +75,7 @@ public class ThorToolFunctionPropertyDefinition
     ///     可选。列出必需的“function arguments”列表。
     /// </summary>
     [JsonPropertyName("required")]
-    public List<string>? Required { get; set; }
+    public string[] Required { get; set; }
 
     /// <summary>
     ///     可选。是否允许附加属性。默认值为true。
@@ -228,7 +228,7 @@ public class ThorToolFunctionPropertyDefinition
     /// <returns></returns>
     public static ThorToolFunctionPropertyDefinition DefineObject(
         IDictionary<string, ThorToolFunctionPropertyDefinition>? properties,
-        List<string>? required,
+        string[] required,
         object? additionalProperties,
         string? description,
         List<string>? @enum)

@@ -13,7 +13,10 @@
       "mcp__http-server__deep_thinking",
       "Bash(dotnet build)",
       "Bash(dotnet build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebSearch",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   }

@@ -140,7 +140,7 @@ public static class AccountEndpoints
         group.MapPost("/openai/oauth/exchange-code", ExchangeOpenAiOAuthCode)
             .WithName("ExchangeOpenAiOAuthCode")
             .WithSummary("处理OpenAI OAuth授权码并创建账户")
-            .Produces<Accounts>(201)
+            .Produces<Accounts>(202)
             .Produces(400);
     }
 

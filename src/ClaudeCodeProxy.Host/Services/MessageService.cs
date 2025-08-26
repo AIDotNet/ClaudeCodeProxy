@@ -216,8 +216,17 @@ public partial class MessageService(
         }
         else if (account?.IsOpenAI == true)
         {
-            await HandleOpenAIAsync(httpContext, request, apiKeyValue, account, requestLog.Id, requestLogService,
-                httpContext.RequestAborted);
+            if (!string.IsNullOrEmpty(account?.OpenAiOauth?.AccessToken))
+            {
+                await HandleOpenAIResponsesAsync(httpContext, request, apiKeyValue, account, requestLog.Id,
+                    requestLogService,
+                    httpContext.RequestAborted);
+            }
+            else
+            {
+                await HandleOpenAIAsync(httpContext, request, apiKeyValue, account, requestLog.Id, requestLogService,
+                    httpContext.RequestAborted);
+            }
         }
         else
         {
@@ -228,6 +237,241 @@ public partial class MessageService(
                 message = "当前API Key没有访问Claude服务的权限",
                 code = "403"
             }, cancellationToken: httpContext.RequestAborted);
+        }
+    }
+
+    private async Task HandleOpenAIResponsesAsync(
+        HttpContext httpContext,
+        AnthropicInput request,
+        ApiKey apiKeyValue,
+        Accounts? account,
+        Guid requestLogId,
+        RequestLogService requestLogService,
+        CancellationToken cancellationToken = default)
+    {
+        var anthropicResponsesService =
+            httpContext.RequestServices.GetRequiredService<OpenAiAnthropicResponsesService>();
+
+        var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
+
+        try
+        {
+            // 准备请求头和代理配置
+            var headers = new Dictionary<string, string>()
+            {
+                { "Authorization", "Bearer " + accessToken },
+            };
+
+            var proxyConfig = account?.Proxy;
+
+            // 调用OpenAI Responses服务（转换为Claude格式输出）
+            ClaudeChatCompletionDto response;
+            // 从response中提取实际的token usage信息
+            var inputTokens = 0;
+            var outputTokens = 0;
+            var cacheCreateTokens = 0;
+            var cacheReadTokens = 0;
+
+            var options = new ThorPlatformOptions();
+
+            if (string.IsNullOrEmpty(account?.ApiUrl))
+            {
+                options.Address = "https://chatgpt.com/backend-api/codex";
+            }
+
+            if (request.Stream)
+            {
+                // 是否第一次输出
+                bool isFirst = true;
+
+                await foreach (var (eventName, value, item) in anthropicResponsesService.StreamChatCompletionsAsync(
+                                   request,
+                                   headers, proxyConfig, options, cancellationToken))
+                {
+                    if (isFirst)
+                    {
+                        httpContext.SetEventStreamHeaders();
+                        isFirst = false;
+                    }
+
+                    if (item?.Usage is { input_tokens: > 0 } ||
+                        item?.message?.Usage?.input_tokens > 0)
+                    {
+                        inputTokens = item.Usage?.input_tokens ?? item?.message?.Usage?.input_tokens ?? 0;
+                    }
+
+                    if (item?.Usage is { output_tokens: > 0 } || item?.message?.Usage?.output_tokens > 0)
+                    {
+                        outputTokens = (item.Usage?.output_tokens ?? item?.message?.Usage?.output_tokens) ?? 0;
+                    }
+
+                    if (item?.Usage is { cache_creation_input_tokens: > 0 } ||
+                        item?.message?.Usage?.cache_creation_input_tokens > 0)
+                    {
+                        cacheCreateTokens += item.Usage?.cache_creation_input_tokens ??
+                                             item?.message?.Usage?.cache_creation_input_tokens ?? 0;
+                    }
+
+                    if (item?.Usage is { cache_read_input_tokens: > 0 } ||
+                        item?.message?.Usage?.cache_read_input_tokens > 0)
+                    {
+                        cacheReadTokens += item.Usage?.cache_read_input_tokens ??
+                                           item.message?.Usage?.cache_read_input_tokens ?? 0;
+                    }
+
+                    await httpContext.WriteAsEventStreamDataAsync(eventName, value);
+                }
+            }
+            else
+            {
+                // 非流式响应
+                response = await anthropicResponsesService.ChatCompletionsAsync(request, headers, proxyConfig,
+                    options,
+                    cancellationToken);
+
+                // 从非流式响应中提取Usage信息
+                if (response?.Usage != null)
+                {
+                    inputTokens = response.Usage.input_tokens ?? 0;
+                    outputTokens = response.Usage.output_tokens ?? 0;
+                    cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
+                    cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
+
+                    // 记录Usage提取日志
+                    var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                    logger.LogDebug(
+                        "OpenAI Responses非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}",
+                        inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
+                }
+
+                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
+            }
+
+            // 计算费用（这里需要根据实际的定价模型来计算）
+            var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
+                cacheReadTokens, httpContext);
+
+            // 完成请求日志记录（成功）
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                cacheCreateTokens: cacheCreateTokens,
+                cacheReadTokens: cacheReadTokens,
+                cost: cost,
+                status: "success",
+                httpStatusCode: 200,
+                cancellationToken: cancellationToken);
+        }
+        catch (RateLimitException rateLimitEx)
+        {
+            // 处理限流异常 - 自动设置账户限流状态
+            if (account != null)
+            {
+                var rateLimitedUntil = rateLimitEx.RateLimitInfo.RateLimitedUntil;
+                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message,
+                    cancellationToken);
+
+                // 记录限流日志
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                logger.LogWarning("OpenAI Responses账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}",
+                    account.Name, account.Id, rateLimitedUntil);
+            }
+
+            // 完成请求日志记录（限流失败）
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
+                status: "rate_limited",
+                errorMessage: rateLimitEx.Message,
+                httpStatusCode: 429,
+                cancellationToken: cancellationToken);
+
+            // 返回429限流错误 - 增强版，包含替代账户信息
+            httpContext.Response.StatusCode = 429;
+            httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
+
+            // 尝试获取限流详情和替代账户信息
+            try
+            {
+                var userAccountBindingService =
+                    httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
+                var rateLimitInfo = await userAccountBindingService.GetRateLimitInfoAsync(
+                    apiKeyValue.UserId, account?.Id ?? string.Empty, httpContext.RequestAborted);
+
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        message =
+                            $"OpenAI Responses账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
+                        type = "rate_limit_error",
+                        code = "429",
+                        details = new
+                        {
+                            account_name = account?.Name,
+                            account_id = account?.Id,
+                            rate_limited_until = rateLimitInfo.RateLimitedUntil.ToString("yyyy-MM-dd HH:mm:ss"),
+                            retry_after_seconds = rateLimitInfo.RetryAfterSeconds,
+                            alternative_accounts = rateLimitInfo.AlternativeAccounts,
+                            service_type = "openai_responses"
+                        }
+                    }
+                }, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // 如果获取限流信息失败，返回基本错误信息
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                logger.LogWarning(ex, "获取OpenAI Responses限流信息失败，返回基本错误信息");
+
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        message = $"OpenAI Responses账户 {account?.Name} 已达到限流，请稍后重试",
+                        type = "rate_limit_error",
+                        code = "429",
+                        details = new
+                        {
+                            account_name = account?.Name,
+                            account_id = account?.Id,
+                            service_type = "openai_responses"
+                        }
+                    }
+                }, cancellationToken: cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 完成请求日志记录（失败）
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
+                status: "error",
+                errorMessage: ex.Message,
+                httpStatusCode: 500,
+                cancellationToken: cancellationToken);
+
+            // 记录详细错误信息
+            var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+            logger.LogError(ex, "OpenAI Responses API调用失败: {ErrorMessage}", ex.Message);
+
+            httpContext.Response.StatusCode = 500;
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                // 返回claude需要的异常格式
+                error = new
+                {
+                    message = ex.Message,
+                    type = "server_error",
+                    code = "500",
+                    details = new
+                    {
+                        service_type = "openai_responses",
+                        account_name = account?.Name,
+                        account_id = account?.Id
+                    }
+                }
+            }, cancellationToken: cancellationToken);
         }
     }
 
@@ -251,25 +495,7 @@ public partial class MessageService(
             var headers = new Dictionary<string, string>()
             {
                 { "Authorization", "Bearer " + accessToken },
-                { "anthropic-version", EnvHelper.ApiVersion }
             };
-
-            // 复制context的请求头
-            // foreach (var header in httpContext.Request.Headers)
-            // {
-            //     // 不要覆盖已有的Authorization和Content-Type头
-            //     if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
-            //         header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
-            //         header.Key.Equals("Connection", StringComparison.OrdinalIgnoreCase) ||
-            //         header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
-            //     {
-            //         continue;
-            //     }
-            //
-            //     headers[header.Key] = header.Value.ToString();
-            // }
-
-            headers["anthropic-beta"] = EnvHelper.BetaHeader;
 
             var proxyConfig = account?.Proxy;
 
@@ -407,7 +633,8 @@ public partial class MessageService(
             // 尝试获取限流详情和替代账户信息
             try
             {
-                var userAccountBindingService = httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
+                var userAccountBindingService =
+                    httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
                 var rateLimitInfo = await userAccountBindingService.GetRateLimitInfoAsync(
                     apiKeyValue.UserId, account?.Id ?? string.Empty, httpContext.RequestAborted);
 
@@ -415,7 +642,8 @@ public partial class MessageService(
                 {
                     error = new
                     {
-                        message = $"账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
+                        message =
+                            $"账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
                         type = "rate_limit_error",
                         code = "429",
                         details = new
@@ -764,7 +992,8 @@ public partial class MessageService(
             // 尝试获取限流详情和替代账户信息
             try
             {
-                var userAccountBindingService = httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
+                var userAccountBindingService =
+                    httpContext.RequestServices.GetRequiredService<UserAccountBindingService>();
                 var rateLimitInfo = await userAccountBindingService.GetRateLimitInfoAsync(
                     apiKeyValue.UserId, account?.Id ?? string.Empty, httpContext.RequestAborted);
 
@@ -772,7 +1001,8 @@ public partial class MessageService(
                 {
                     error = new
                     {
-                        message = $"账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
+                        message =
+                            $"账户 {account?.Name} 已达到限流，预计解除时间：{rateLimitInfo.EstimatedRecoveryTime:yyyy-MM-dd HH:mm:ss}",
                         type = "rate_limit_error",
                         code = "429",
                         details = new

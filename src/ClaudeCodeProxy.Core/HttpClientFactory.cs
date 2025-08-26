@@ -54,8 +54,10 @@ public static class HttpClientFactory
                                          DecompressionMethods.Brotli,
                 UseDefaultCredentials = false,
                 PreAuthenticate = false,
+                UseCookies = true,
                 ServerCertificateCustomValidationCallback = (message, certificate2, arg3, arg4) => true,
-                MaxAutomaticRedirections = 3
+                MaxAutomaticRedirections = 3,
+                UseProxy = true,
             };
             if (config != null && !string.IsNullOrEmpty(config.Host) && config.Port > 0)
             {
@@ -93,6 +95,7 @@ public static class HttpClientFactory
                         AllowAutoRedirect = true,
                         AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate |
                                                  DecompressionMethods.Brotli,
+                        UseCookies = true,
                         PreAuthenticate = false,
                         // 不要验证ssl
                         SslOptions = new SslClientAuthenticationOptions()
@@ -100,9 +103,12 @@ public static class HttpClientFactory
                             RemoteCertificateValidationCallback = (message, certificate2, arg3, arg4) => true
                         },
                         EnableMultipleHttp2Connections = true,
+                        UseProxy = true,
                         MaxAutomaticRedirections = 3
                     })
                     {
+                        DefaultRequestVersion = HttpVersion.Version20,
+                        DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher,
                         Timeout = TimeSpan.FromMinutes(30)
                     });
                 }
