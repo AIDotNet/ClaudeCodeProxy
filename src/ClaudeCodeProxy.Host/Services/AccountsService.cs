@@ -323,12 +323,13 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                         return boundAccount;
                     }
                 }
-                
+
                 logger.LogWarning("⚠️ API Key绑定的账户都不可用或不支持模型 {Model}，回退到用户绑定账户", requestedModel);
             }
 
             // 2. 检查用户绑定的账户（第二优先级）
-            var userBoundAccounts = await GetUserBoundAccountsForApiKeyAsync(apiKeyValue, requestedModel, cancellationToken);
+            var userBoundAccounts =
+                await GetUserBoundAccountsForApiKeyAsync(apiKeyValue, requestedModel, cancellationToken);
             if (userBoundAccounts.Any())
             {
                 var selectedUserAccount = userBoundAccounts.FirstOrDefault(a => a.Status == "active" && a.IsEnabled);
@@ -385,27 +386,27 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             }
 
             // 5. 如果有会话哈希，检查是否有已映射的账户
-            if (!string.IsNullOrEmpty(sessionHash))
-            {
-                var mappedAccount = await GetSessionMappingAsync(sessionHash, cancellationToken);
-                if (mappedAccount != null)
-                {
-                    // 验证映射的账户是否仍然可用
-                    if (await IsAccountAvailableAsync(mappedAccount, cancellationToken))
-                    {
-                        logger.LogInformation("🎯 使用粘性会话账户: {AccountName} ({AccountId}) for session {SessionHash}",
-                            mappedAccount.Name, mappedAccount.Id, sessionHash);
-
-                        await UpdateLastUsedAsync(mappedAccount.Id, cancellationToken);
-                        return mappedAccount;
-                    }
-                    else
-                    {
-                        logger.LogWarning("⚠️ 映射的账户 {AccountId} 不再可用，选择新账户", mappedAccount.Id);
-                        await DeleteSessionMappingAsync(sessionHash);
-                    }
-                }
-            }
+            // if (!string.IsNullOrEmpty(sessionHash))
+            // {
+            //     var mappedAccount = await GetSessionMappingAsync(sessionHash, cancellationToken);
+            //     if (mappedAccount != null)
+            //     {
+            //         // 验证映射的账户是否仍然可用
+            //         if (await IsAccountAvailableAsync(mappedAccount, cancellationToken))
+            //         {
+            //             logger.LogInformation("🎯 使用粘性会话账户: {AccountName} ({AccountId}) for session {SessionHash}",
+            //                 mappedAccount.Name, mappedAccount.Id, sessionHash);
+            //
+            //             await UpdateLastUsedAsync(mappedAccount.Id, cancellationToken);
+            //             return mappedAccount;
+            //         }
+            //         else
+            //         {
+            //             logger.LogWarning("⚠️ 映射的账户 {AccountId} 不再可用，选择新账户", mappedAccount.Id);
+            //             await DeleteSessionMappingAsync(sessionHash);
+            //         }
+            //     }
+            // }
 
             // 4. 获取所有可用账户（传递请求的模型进行过滤）
             var availableAccounts = await GetAllAvailableAccountsAsync(apiKeyValue, requestedModel, cancellationToken);
@@ -422,7 +423,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             }
 
             // 5. 按优先级和最后使用时间排序
-            var sortedAccounts = SortAccountsByPriority(availableAccounts);
+            var sortedAccounts = SortAccountsByPriority(availableAccounts, requestedModel);
 
             // 6. 选择第一个账户
             var selectedAccount = sortedAccounts.First();
@@ -536,9 +537,20 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         }
     }
 
-    private List<Accounts> SortAccountsByPriority(List<Accounts> accounts)
+    private List<Accounts> SortAccountsByPriority(List<Accounts> accounts, string? requestedModel)
     {
         var now = DateTime.Now;
+
+        // 如果accounts绑定莫模型则优先使用绑定该模型的账户
+        if (!string.IsNullOrEmpty(requestedModel))
+        {
+            var boundAccounts = accounts.Where(a => a.SupportedModels != null && a.SupportedModels.Any(m =>
+                m.Split(':', 2)[0].Trim().Equals(requestedModel, StringComparison.OrdinalIgnoreCase))).ToList();
+            if (boundAccounts.Any())
+            {
+                accounts = boundAccounts;
+            }
+        }
 
         return accounts
             .Select(account => new
@@ -712,7 +724,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 await UpdateAccountLastUsedAsync(account.Id, cancellationToken);
                 return account.ApiKey;
             }
-            
+
             if (account.Platform == "openai" && !string.IsNullOrEmpty(account.OpenAiOauth?.AccessToken))
             {
                 // 更新最后使用时间
@@ -832,19 +844,20 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         CancellationToken cancellationToken = default)
     {
         var query = from account in context.Accounts
-                    where account.IsEnabled && 
-                          (account.IsGlobal || 
-                           context.UserAccountBindings.Any(b => 
-                               b.UserId == apiKeyValue.UserId && 
-                               b.AccountId == account.Id && 
-                               b.IsActive))
-                    select account;
+            where account.IsEnabled &&
+                  (account.IsGlobal ||
+                   context.UserAccountBindings.Any(b =>
+                       b.UserId == apiKeyValue.UserId &&
+                       b.AccountId == account.Id &&
+                       b.IsActive))
+            select account;
 
         var accounts = await query
             .Include(a => a.UserBindings.Where(b => b.UserId == apiKeyValue.UserId))
-            .OrderBy(a => a.UserBindings.Any(b => b.UserId == apiKeyValue.UserId) ? 
-                          a.UserBindings.First(b => b.UserId == apiKeyValue.UserId).Priority : 
-                          int.MaxValue)
+            .OrderBy(a =>
+                a.UserBindings.Any(b => b.UserId == apiKeyValue.UserId)
+                    ? a.UserBindings.First(b => b.UserId == apiKeyValue.UserId).Priority
+                    : int.MaxValue)
             .ThenBy(a => a.Priority)
             .ToListAsync(cancellationToken);
 
@@ -866,8 +879,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     /// 异步检查账户是否支持指定模型
     /// </summary>
     private async Task<bool> DoesAccountSupportModelAsync(
-        Accounts account, 
-        string? model, 
+        Accounts account,
+        string? model,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(model))

@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -172,6 +173,12 @@ public static class HttpClientExtensions
             {
                 string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
                 var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                if (url.StartsWith("https://chatgpt.com/backend-api/codex"))
+                {
+                    stringContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                }
+
                 req.Content = stringContent;
             }
         }
@@ -185,8 +192,8 @@ public static class HttpClientExtensions
         {
             req.Headers.Add(header.Key, header.Value);
         }
-        
-        req.Headers.Add("Host","chatgpt.com");
+
+        req.Headers.Add("Host", "chatgpt.com");
 
         return await httpClient.SendAsync(req);
     }

@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
@@ -605,7 +606,8 @@ public class OpenAiAnthropicResponsesService(
         {
             // 将多个系统消息合并为一个system角色的消息
             var systemTexts = input.Systems
-                .Where(s => s.Type == "text" && !string.IsNullOrEmpty(s.Text) && s.Text != "You are Claude Code, Anthropic's official CLI for Claude.")
+                .Where(s => s.Type == "text" && !string.IsNullOrEmpty(s.Text) &&
+                            s.Text != "You are Claude Code, Anthropic's official CLI for Claude.")
                 .Select(s => s.Text);
             var combinedSystemMessage = string.Join("\n", systemTexts);
             if (!string.IsNullOrEmpty(combinedSystemMessage))
@@ -697,41 +699,13 @@ public class OpenAiAnthropicResponsesService(
         // 转换工具
         if (input.Tools?.Count > 0)
         {
-            openAiRequest.Tools = input.Tools.Select(tool => new ResponsesToolsInput
-            {
-                Type = tool.Type,
-                Name = tool.name,
-                Description = tool.Description,
-                // 对于function类型的工具，将参数序列化为Parameters字段
-                Parameters = tool.InputSchema != null
-                    ? new ThorToolFunctionPropertyDefinition
-                    {
-                        Type = tool.InputSchema.Type,
-                        Properties = tool.InputSchema.Properties?.ToDictionary(
-                            kvp => kvp.Key,
-                            kvp => new ThorToolFunctionPropertyDefinition { Type = kvp.Value?.ToString() ?? "string" }
-                        ),
-                        Required = tool.InputSchema.Required
-                    }
-                    : null
-            }).ToList();
+            openAiRequest.Tools = input.Tools.Select(AnthropicMessageToolToResponsesToolsInput).ToList();
         }
 
         // 转换工具选择
-        if (input.ToolChoiceCalculated != null)
+        if (input.Tools?.Count > 0)
         {
-            if (input.ToolChoiceCalculated is string toolChoiceStr)
-            {
-                openAiRequest.ToolChoice = toolChoiceStr;
-            }
-            else if (input.ToolChoiceCalculated is AnthropicTooChoiceInput toolChoice)
-            {
-                openAiRequest.ToolChoice = new
-                {
-                    type = toolChoice.Type,
-                    function = new { name = toolChoice.Name }
-                };
-            }
+            openAiRequest.ToolChoice = "auto";
         }
 
         openAiRequest.ParallelToolCalls = true; // 支持并行工具调用
@@ -742,6 +716,52 @@ public class OpenAiAnthropicResponsesService(
         // openAIRequest.PreviousResponseId = GetPreviousResponseId(input);
 
         return openAiRequest;
+    }
+
+    private ResponsesToolsInput AnthropicMessageToolToResponsesToolsInput(AnthropicMessageTool tool)
+    {
+        var input = new ResponsesToolsInput()
+        {
+            Type = "function",
+            Description = tool.Description,
+            Name = tool.name,
+        };
+
+        if (tool.InputSchema != null)
+        {
+            input.Parameters = new ThorToolFunctionPropertyDefinition
+            {
+                Required = tool.InputSchema.Required?.ToArray() ?? [],
+                Type = "object",
+                Properties = new ConcurrentDictionary<string, ThorToolFunctionPropertyDefinition>()
+            };
+            if (tool.InputSchema.Properties != null)
+            {
+                foreach (var schemaValue in tool.InputSchema.Properties)
+                {
+                    var definition = new ThorToolFunctionPropertyDefinition
+                    {
+                        Description = schemaValue.Value.description,
+                        Type = schemaValue.Value.type,
+                        Properties = new ConcurrentDictionary<string, ThorToolFunctionPropertyDefinition>()
+                    };
+
+                    if (schemaValue.Value.type == "array" && schemaValue.Value.items != null)
+                    {
+                        definition.Items = new ThorToolFunctionPropertyDefinition
+                        {
+                            Type = schemaValue.Value.items.type
+                        };
+                    }
+
+                    input.Parameters.Properties.Add(schemaValue.Key, definition);
+
+                    // 套娃
+                }
+            }
+        }
+
+        return input;
     }
 
     private ClaudeChatCompletionDto ConvertOpenAIToClaude(ResponsesDto openAIResponse, AnthropicInput input)

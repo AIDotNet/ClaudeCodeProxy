@@ -98,14 +98,28 @@ public class AnthropicMessageTool
 
     [JsonPropertyName("description")] public string? Description { get; set; }
 
-    [JsonPropertyName("input_schema")] public Input_schema InputSchema { get; set; }
+    [JsonPropertyName("input_schema")] public InputSchema? InputSchema { get; set; }
 }
 
-public class Input_schema
+public class InputSchema
 {
     [JsonPropertyName("type")] public string Type { get; set; }
 
-    [JsonPropertyName("properties")] public Dictionary<string, object>? Properties { get; set; }
+    [JsonPropertyName("properties")] public Dictionary<string, InputSchemaValue>? Properties { get; set; }
 
     [JsonPropertyName("required")] public string[]? Required { get; set; }
+}
+
+public class InputSchemaValue
+{
+    public string type { get; set; }
+
+    public string description { get; set; }
+
+    public InputSchemaValueItems? items { get; set; }
+}
+
+public class InputSchemaValueItems
+{
+    public string? type { get; set; }
 }

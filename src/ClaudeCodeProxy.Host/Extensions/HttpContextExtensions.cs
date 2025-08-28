@@ -60,20 +60,20 @@ public static class HttpContextExtensions
             _ => "application/octet-stream"
         };
     }
-
-    /// <summary>
-    /// 往响应内容写入事件流数据,调用前需要先调用 <see cref="SetEventStreamHeaders"/>
-    /// </summary>
-    /// <param name="context"></param>
-    /// <param name="eventName"></param>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    public static async ValueTask WriteAsEventStreamDataAsync(this HttpContext context,
-        string eventName, string value)
-    {
-        await context.WriteAsEventAsync($"{eventName}{value}\n\n");
-        await context.Response.Body.FlushAsync();
-    }
+    //
+    // /// <summary>
+    // /// 往响应内容写入事件流数据,调用前需要先调用 <see cref="SetEventStreamHeaders"/>
+    // /// </summary>
+    // /// <param name="context"></param>
+    // /// <param name="eventName"></param>
+    // /// <param name="value"></param>
+    // /// <returns></returns>
+    // public static async ValueTask WriteAsEventStreamDataAsync(this HttpContext context,
+    //     string eventName, string value)
+    // {
+    //     await context.WriteAsEventAsync($"{eventName}{value}\n\n");
+    //     await context.Response.Body.FlushAsync();
+    // }
 
     /// <summary>
     /// 往响应内容写入事件流数据,调用前需要先调用 <see cref="SetEventStreamHeaders"/>
@@ -84,7 +84,16 @@ public static class HttpContextExtensions
     /// <returns></returns>
     public static async ValueTask WriteAsEventStreamDataAsync(this HttpContext context, string @event, object value)
     {
-        var jsonData = JsonSerializer.Serialize(value, ThorJsonSerializer.DefaultOptions);
+        string jsonData;
+        if (value is string stringValue)
+        {
+            jsonData = stringValue;
+        }
+        else
+        {
+            jsonData = JsonSerializer.Serialize(value, ThorJsonSerializer.DefaultOptions);
+        }
+
         var eventData = $"event: {@event}\ndata: {jsonData}\n\n";
 
         await context.WriteAsEventAsync(eventData);
