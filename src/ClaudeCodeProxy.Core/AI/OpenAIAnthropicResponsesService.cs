@@ -106,7 +106,7 @@ public class OpenAiAnthropicResponsesService(
             }
 
             // 处理文本增量 - 支持多种OpenAI Responses API 2025事件类型
-            if (!string.IsNullOrEmpty(sseData.Text) ||
+            if (!string.IsNullOrEmpty(sseData.Delta) ||
                 eventType == "response.output_text.delta" ||
                 eventType == "response.text.delta")
             {
@@ -134,7 +134,7 @@ public class OpenAiAnthropicResponsesService(
                 }
 
                 // 发送content_block_delta事件
-                var contentDeltaEvent = CreateContentBlockDeltaEvent(sseData.Text);
+                var contentDeltaEvent = CreateContentBlockDeltaEvent(sseData.Delta);
                 contentDeltaEvent.index = currentBlockIndex;
                 yield return ("content_block_delta",
                     JsonSerializer.Serialize(contentDeltaEvent, ThorJsonSerializer.DefaultOptions),
@@ -645,7 +645,19 @@ public class OpenAiAnthropicResponsesService(
                         if (content.Type == "text")
                         {
                             contentInput.Text = content.Text;
-                            contentInput.Type = "input_text";
+                            // 如果角色是ai则output_text
+                            if (message.Role == "user")
+                            {
+                                contentInput.Type = "input_text";
+                            }
+                            else if(message.Role == "assistant")
+                            {
+                                contentInput.Type = "output_text";
+                            }
+                            else
+                            {
+                                contentInput.Type = "input_text";
+                            }
                         }
                         else if (content.Type == "image")
                         {
@@ -681,6 +693,13 @@ public class OpenAiAnthropicResponsesService(
                                 content = content.Content?.ToString() ?? string.Empty,
                                 status = "completed"
                             };
+                        }
+
+                        // 如果所有内容都是空则不添加
+                        if (string.IsNullOrEmpty(contentInput.Text) && string.IsNullOrEmpty(contentInput.ImageUrl) &&
+                            string.IsNullOrEmpty(contentInput.Type))
+                        {
+                            continue;
                         }
 
                         convertedContents.Add(contentInput);
