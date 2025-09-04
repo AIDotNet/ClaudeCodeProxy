@@ -1,5 +1,7 @@
-﻿using System.Text.Json;
+﻿using System.Runtime.CompilerServices;
+using System.Text.Json;
 using ClaudeCodeProxy.Abstraction;
+using ClaudeCodeProxy.Abstraction.Anthropic;
 using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
 using Thor.Abstractions;
@@ -64,10 +66,10 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         Dictionary<string, string> headers,
         ProxyConfig? config,
         ThorPlatformOptions? options = null,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var openAIRequest = ConvertAnthropicToOpenAI(input);
-        openAIRequest.Stream = true;
+        var openAiRequest = ConvertAnthropicToOpenAI(input);
+        openAiRequest.Stream = true;
 
         var messageId = Guid.NewGuid().ToString();
         var hasStarted = false;
@@ -82,12 +84,12 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         var currentBlockIndex = 0; // 跟踪当前块索引
         var lastContentBlockType = ""; // 跟踪最后一个内容块类型，用于确定停止原因
 
-        await foreach (var openAIResponse in _openAIChatService.StreamChatCompletionsAsync(openAIRequest, headers,
+        await foreach (var openAiResponse in _openAIChatService.StreamChatCompletionsAsync(openAiRequest, headers,
                            config, options, cancellationToken))
         {
             // 发送message_start事件
-            if (!hasStarted && openAIResponse.Choices?.Count > 0 &&
-                openAIResponse.Choices.Any(x => x.Delta.ToolCalls?.Count > 0) == false)
+            if (!hasStarted && openAiResponse.Choices?.Count > 0 &&
+                openAiResponse.Choices.Any(x => x.Delta.ToolCalls?.Count > 0) == false)
             {
                 hasStarted = true;
                 var messageStartEvent = CreateMessageStartEvent(messageId, input.Model);
@@ -96,23 +98,23 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             }
 
             // 更新使用情况统计
-            if (openAIResponse.Usage != null)
+            if (openAiResponse.Usage != null)
             {
                 // 使用最新的token计数（OpenAI通常在最后的响应中提供完整的统计）
-                if (openAIResponse.Usage.PromptTokens.HasValue)
+                if (openAiResponse.Usage.PromptTokens.HasValue)
                 {
-                    accumulatedUsage.input_tokens = openAIResponse.Usage.PromptTokens.Value;
+                    accumulatedUsage.input_tokens = openAiResponse.Usage.PromptTokens.Value;
                 }
 
-                if (openAIResponse.Usage.CompletionTokens.HasValue)
+                if (openAiResponse.Usage.CompletionTokens.HasValue)
                 {
-                    accumulatedUsage.output_tokens = (int)openAIResponse.Usage.CompletionTokens.Value;
+                    accumulatedUsage.output_tokens = (int)openAiResponse.Usage.CompletionTokens.Value;
                 }
 
-                if (openAIResponse.Usage.PromptTokensDetails?.CachedTokens.HasValue == true)
+                if (openAiResponse.Usage.PromptTokensDetails?.CachedTokens.HasValue == true)
                 {
                     accumulatedUsage.cache_read_input_tokens =
-                        openAIResponse.Usage.PromptTokensDetails.CachedTokens.Value;
+                        openAiResponse.Usage.PromptTokensDetails.CachedTokens.Value;
                 }
 
                 // 记录调试信息
@@ -121,9 +123,9 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     accumulatedUsage.cache_read_input_tokens);
             }
 
-            if (openAIResponse.Choices is { Count: > 0 })
+            if (openAiResponse.Choices is { Count: > 0 })
             {
-                var choice = openAIResponse.Choices.First();
+                var choice = openAiResponse.Choices.First();
 
                 // 处理内容
                 if (!string.IsNullOrEmpty(choice.Delta?.Content))
@@ -329,7 +331,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     /// </summary>
     private ThorChatCompletionsRequest ConvertAnthropicToOpenAI(AnthropicInput anthropicInput)
     {
-        var openAIRequest = new ThorChatCompletionsRequest
+        var openAiRequest = new ThorChatCompletionsRequest
         {
             Model = anthropicInput.Model,
             MaxTokens = anthropicInput.MaxTokens,
@@ -337,17 +339,27 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             Messages = new List<ThorChatMessage>()
         };
 
+        if (anthropicInput.Thinking != null &&
+            anthropicInput.Thinking.Type.Equals("enabled", StringComparison.OrdinalIgnoreCase))
+        {
+            openAiRequest.Thinking = new ThorChatClaudeThinking()
+            {
+                BudgetToken = anthropicInput.Thinking.BudgetTokens,
+                Type = "enabled",
+            };
+            openAiRequest.EnableThinking = true;
+        }
 
         if (!string.IsNullOrEmpty(anthropicInput.System))
         {
-            openAIRequest.Messages.Add(ThorChatMessage.CreateSystemMessage(anthropicInput.System));
+            openAiRequest.Messages.Add(ThorChatMessage.CreateSystemMessage(anthropicInput.System));
         }
 
         if (anthropicInput.Systems?.Count > 0)
         {
             foreach (var systemContent in anthropicInput.Systems)
             {
-                openAIRequest.Messages.Add(ThorChatMessage.CreateSystemMessage(systemContent.Text ?? string.Empty));
+                openAiRequest.Messages.Add(ThorChatMessage.CreateSystemMessage(systemContent.Text ?? string.Empty));
             }
         }
 
@@ -364,10 +376,10 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     continue;
                 }
 
-                openAIRequest.Messages.AddRange(thorMessages);
+                openAiRequest.Messages.AddRange(thorMessages);
             }
 
-            openAIRequest.Messages = openAIRequest.Messages
+            openAiRequest.Messages = openAiRequest.Messages
                 .Where(m => !string.IsNullOrEmpty(m.Content) || m.Contents?.Count > 0 || m.ToolCalls?.Count > 0 ||
                             !string.IsNullOrEmpty(m.ToolCallId))
                 .ToList();
@@ -376,22 +388,22 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         // 处理tools
         if (anthropicInput.Tools is { Count: > 0 })
         {
-            openAIRequest.Tools = anthropicInput.Tools.Select(ConvertAnthropicToolToThor).ToList();
+            openAiRequest.Tools = anthropicInput.Tools.Select(ConvertAnthropicToolToThor).ToList();
         }
 
         // 处理tool_choice
         if (anthropicInput.ToolChoice != null)
         {
-            openAIRequest.ToolChoice = ConvertAnthropicToolChoiceToThor(anthropicInput.ToolChoice);
+            openAiRequest.ToolChoice = ConvertAnthropicToolChoiceToThor(anthropicInput.ToolChoice);
         }
 
-        return openAIRequest;
+        return openAiRequest;
     }
 
     /// <summary>
     /// 转换Anthropic消息为Thor消息列表
     /// </summary>
-    private List<ThorChatMessage> ConvertAnthropicMessageToThor(AnthropicMessageInput anthropicMessage)
+    private static List<ThorChatMessage> ConvertAnthropicMessageToThor(AnthropicMessageInput anthropicMessage)
     {
         var results = new List<ThorChatMessage>();
 
@@ -635,47 +647,61 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             model = openAIResponse.Model ?? originalRequest.Model,
             stop_reason = GetClaudeStopReason(openAIResponse.Choices?.FirstOrDefault()?.FinishReason),
             stop_sequence = "",
-            content = new ClaudeChatCompletionDtoContent[0]
+            content = []
         };
 
-        if (openAIResponse.Choices != null && openAIResponse.Choices.Count > 0)
+        if (openAIResponse.Choices is { Count: > 0 })
         {
             var choice = openAIResponse.Choices.First();
             var contents = new List<ClaudeChatCompletionDtoContent>();
 
-            // 处理思维内容
-            if (!string.IsNullOrEmpty(choice.Message.ReasoningContent))
+            if (!string.IsNullOrEmpty(choice.Message.Content) && !string.IsNullOrEmpty(choice.Message.ReasoningContent))
             {
                 contents.Add(new ClaudeChatCompletionDtoContent
                 {
                     type = "thinking",
                     Thinking = choice.Message.ReasoningContent
                 });
-            }
 
-            // 处理文本内容
-            if (!string.IsNullOrEmpty(choice.Message.Content))
-            {
                 contents.Add(new ClaudeChatCompletionDtoContent
                 {
                     type = "text",
                     text = choice.Message.Content
                 });
+                
+                
             }
-
-            // 处理工具调用
-            if (choice.Message.ToolCalls != null && choice.Message.ToolCalls.Count > 0)
+            else
             {
-                foreach (var toolCall in choice.Message.ToolCalls)
+                // 处理思维内容
+                if (!string.IsNullOrEmpty(choice.Message.ReasoningContent))
                 {
                     contents.Add(new ClaudeChatCompletionDtoContent
                     {
-                        type = "tool_use",
-                        id = toolCall.Id,
-                        name = toolCall.Function?.Name,
-                        input = JsonSerializer.Deserialize<object>(toolCall.Function?.Arguments ?? "{}")
+                        type = "thinking",
+                        Thinking = choice.Message.ReasoningContent
                     });
                 }
+
+                // 处理文本内容
+                if (!string.IsNullOrEmpty(choice.Message.Content))
+                {
+                    contents.Add(new ClaudeChatCompletionDtoContent
+                    {
+                        type = "text",
+                        text = choice.Message.Content
+                    });
+                }
+            }
+
+            // 处理工具调用
+            if (choice.Message.ToolCalls is { Count: > 0 })
+            {
+                contents.AddRange(choice.Message.ToolCalls.Select(toolCall => new ClaudeChatCompletionDtoContent
+                {
+                    type = "tool_use", id = toolCall.Id, name = toolCall.Function?.Name,
+                    input = JsonSerializer.Deserialize<object>(toolCall.Function?.Arguments ?? "{}")
+                }));
             }
 
             claudeResponse.content = contents.ToArray();
@@ -702,9 +728,9 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     /// <summary>
     /// 将OpenAI的完成原因转换为Claude的停止原因
     /// </summary>
-    private string GetClaudeStopReason(string? openAIFinishReason)
+    private string GetClaudeStopReason(string? openAiFinishReason)
     {
-        return openAIFinishReason switch
+        return openAiFinishReason switch
         {
             "stop" => "end_turn",
             "length" => "max_tokens",
@@ -717,7 +743,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     /// <summary>
     /// 根据最后的内容块类型和OpenAI的完成原因确定Claude的停止原因
     /// </summary>
-    private string GetStopReasonByLastContentType(string? openAIFinishReason, string lastContentBlockType)
+    private string GetStopReasonByLastContentType(string? openAiFinishReason, string lastContentBlockType)
     {
         // 如果最后一个内容块是工具调用，优先返回tool_use
         if (lastContentBlockType == "tool_use")
@@ -726,32 +752,6 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         }
 
         // 否则使用标准的转换逻辑
-        return GetClaudeStopReason(openAIFinishReason);
-    }
-
-    /// <summary>
-    /// 创建message_start事件
-    /// </summary>
-    private ClaudeStreamDto CreateMessageStartEvent(string messageId, string model)
-    {
-        return new ClaudeStreamDto
-        {
-            type = "message_start",
-            message = new ClaudeChatCompletionDto
-            {
-                id = messageId,
-                type = "message",
-                role = "assistant",
-                model = model,
-                content = new ClaudeChatCompletionDtoContent[0],
-                Usage = new ClaudeChatCompletionDtoUsage
-                {
-                    input_tokens = 0,
-                    output_tokens = 0,
-                    cache_creation_input_tokens = 0,
-                    cache_read_input_tokens = 0
-                }
-            }
-        };
+        return GetClaudeStopReason(openAiFinishReason);
     }
 }
