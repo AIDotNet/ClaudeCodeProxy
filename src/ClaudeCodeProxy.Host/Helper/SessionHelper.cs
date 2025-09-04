@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ClaudeCodeProxy.Abstraction;
 using Microsoft.Extensions.Logging;
 using Thor.Abstractions.Anthropic;
 
@@ -28,7 +29,7 @@ public class SessionHelper
         try
         {
             // 将对象序列化为JSON以便处理
-            var json = JsonSerializer.Serialize(requestBody);
+            var json = JsonSerializer.Serialize(requestBody,ThorJsonSerializer.DefaultOptions);
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 

@@ -3,6 +3,7 @@ using ClaudeCodeProxy.Host.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
@@ -195,7 +196,7 @@ public static class RedeemCodeEndpoints
         {
             // 从请求体中提取isEnabled
             var requestDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-                System.Text.Json.JsonSerializer.Serialize(requestBody));
+                System.Text.Json.JsonSerializer.Serialize(requestBody, ThorJsonSerializer.DefaultOptions));
 
             if (!requestDict.TryGetValue("isEnabled", out var isEnabledObj) ||
                 !bool.TryParse(isEnabledObj.ToString(), out var isEnabled))

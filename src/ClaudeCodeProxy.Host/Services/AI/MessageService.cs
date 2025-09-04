@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;
 using Thor.Abstractions.Anthropic;
 
-namespace ClaudeCodeProxy.Host.Services;
+namespace ClaudeCodeProxy.Host.Services.AI;
 
 [MiniApi(Route = "/v1/messages", Tags = "Messages")]
 public partial class MessageService(

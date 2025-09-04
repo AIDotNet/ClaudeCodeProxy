@@ -19,6 +19,7 @@ using System.Runtime.InteropServices;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL;
 using ClaudeCodeProxy.Host.Middlewares;
+using ClaudeCodeProxy.Host.Services.AI;
 using Mapster;
 
 namespace ClaudeCodeProxy.Host;

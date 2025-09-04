@@ -1,231 +1,72 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using ClaudeCodeProxy.Abstraction;
 
 namespace ClaudeCodeProxy.Core.Extensions;
 
 public static class HttpClientExtensions
 {
-    public static async Task<HttpResponseMessage> HttpRequestRaw(this HttpClient httpClient, string url,
-        object? postData,
-        string token)
+    private static readonly MediaTypeHeaderValue JsonMediaType =
+        new("application/json") { CharSet = "utf-8" };
+
+    private static async ValueTask<HttpContent> CreateJsonContentAsync(object value)
     {
-        HttpRequestMessage req = new(HttpMethod.Post, url);
+        var ms = new MemoryStream(16 * 1024); // 预分配减少扩容
+        await JsonSerializer.SerializeAsync(ms, value, value.GetType(), ThorJsonSerializer.DefaultOptions)
+            .ConfigureAwait(false);
+        ms.Position = 0;
 
-        if (postData != null)
-        {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
-                var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                req.Content = stringContent;
-            }
-        }
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            req.Headers.Add("Authorization", $"Bearer {token}");
-        }
-
-        var response = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-
-        return response;
+        var content = new StreamContent(ms);
+        content.Headers.ContentType = JsonMediaType;
+        return content;
     }
 
-    public static async Task<HttpResponseMessage> HttpRequestRaw(this HttpClient httpClient, string url,
-        object? postData,
-        string token, string tokenKey)
+    public static async Task<HttpResponseMessage> HttpRequestRaw<T>(this HttpClient httpClient, string url,
+        T postData, string token, Dictionary<string, string> headers) where T : class
     {
-        HttpRequestMessage req = new(HttpMethod.Post, url);
-
-        if (postData != null)
+        var req = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
-                var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                req.Content = stringContent;
-            }
+            Content = await CreateJsonContentAsync(postData).ConfigureAwait(false)
+        };
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        if (!string.IsNullOrEmpty(token))
+        foreach (var kv in headers)
         {
-            req.Headers.Add(tokenKey, token);
+            if (!req.Headers.Contains(kv.Key))
+                req.Headers.TryAddWithoutValidation(kv.Key, kv.Value);
         }
 
-
-        var response = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-
-        return response;
+        return await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
     }
 
-    public static async Task<HttpResponseMessage> HttpRequestRaw(this HttpClient httpClient, string url,
-        object? postData,
-        string token, Dictionary<string, string> headers)
+    public static async Task<HttpResponseMessage> PostJsonAsync<T>(this HttpClient httpClient, string url,
+        T? postData, string token, Dictionary<string, string> headers) where T : class
     {
-        HttpRequestMessage req = new(HttpMethod.Post, url);
-
-        if (postData != null)
+        var req = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
-                var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                req.Content = stringContent;
-            }
+            Content = await CreateJsonContentAsync(postData).ConfigureAwait(false)
+        };
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        if (!string.IsNullOrEmpty(token))
+        foreach (var kv in headers)
         {
-            req.Headers.Add("Authorization", $"Bearer {token}");
+            if (!req.Headers.Contains(kv.Key))
+                req.Headers.TryAddWithoutValidation(kv.Key, kv.Value);
         }
 
-        foreach (var header in headers.Where(header => !req.Headers.Contains(header.Key)))
+        if (url.StartsWith("https://chatgpt.com/backend-api/codex", StringComparison.OrdinalIgnoreCase))
         {
-            req.Headers.Add(header.Key, header.Value);
+            req.Headers.Host = "chatgpt.com";
         }
 
-
-        var response = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-
-        return response;
-    }
-
-    public static async Task<HttpResponseMessage> HttpRequestRaw(this HttpClient httpClient, HttpRequestMessage req,
-        object? postData)
-    {
-        if (postData != null)
-        {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
-                var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                req.Content = stringContent;
-            }
-        }
-
-        var response = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-
-        return response;
-    }
-
-    public static async Task<HttpResponseMessage> PostJsonAsync(this HttpClient httpClient, string url,
-        object? postData,
-        string token)
-    {
-        HttpRequestMessage req = new(HttpMethod.Post, url);
-
-        if (postData != null)
-        {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                var stringContent =
-                    new StringContent(JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions),
-                        Encoding.UTF8, "application/json");
-                req.Content = stringContent;
-            }
-        }
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            req.Headers.Add("Authorization", $"Bearer {token}");
-        }
-
-        return await httpClient.SendAsync(req);
-    }
-
-    public static async Task<HttpResponseMessage> PostJsonAsync(this HttpClient httpClient, string url,
-        object? postData,
-        string token, Dictionary<string, string> headers)
-    {
-        HttpRequestMessage req = new(HttpMethod.Post, url);
-
-        if (postData != null)
-        {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
-                var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                if (url.StartsWith("https://chatgpt.com/backend-api/codex"))
-                {
-                    stringContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                }
-
-                req.Content = stringContent;
-            }
-        }
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            req.Headers.Add("Authorization", $"Bearer {token}");
-        }
-
-        foreach (var header in headers.Where(header => !req.Headers.Contains(header.Key)))
-        {
-            req.Headers.Add(header.Key, header.Value);
-        }
-
-        if (url.StartsWith("https://chatgpt.com/backend-api/codex"))
-        {
-            req.Headers.Add("Host", "chatgpt.com");
-        }
-
-
-        return await httpClient.SendAsync(req);
-    }
-
-    public static Task<HttpResponseMessage> PostJsonAsync(this HttpClient httpClient, string url, object? postData,
-        string token, string tokenKey)
-    {
-        HttpRequestMessage req = new(HttpMethod.Post, url);
-
-        if (postData != null)
-        {
-            if (postData is HttpContent data)
-            {
-                req.Content = data;
-            }
-            else
-            {
-                string jsonContent = JsonSerializer.Serialize(postData, ThorJsonSerializer.DefaultOptions);
-                var stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                req.Content = stringContent;
-            }
-        }
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            req.Headers.Add(tokenKey, token);
-        }
-
-        return httpClient.SendAsync(req);
+        return await httpClient.SendAsync(req).ConfigureAwait(false);
     }
 }

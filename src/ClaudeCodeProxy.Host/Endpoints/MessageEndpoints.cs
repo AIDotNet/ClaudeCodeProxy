@@ -1,6 +1,7 @@
 using ClaudeCodeProxy.Abstraction.Chats;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Host.Services;
+using ClaudeCodeProxy.Host.Services.AI;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;

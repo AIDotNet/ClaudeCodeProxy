@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
@@ -145,7 +146,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             }
             else
             {
-                account.GeminiOauth = System.Text.Json.JsonSerializer.Serialize(request.GeminiOauth);
+                account.GeminiOauth =
+                    System.Text.Json.JsonSerializer.Serialize(request.GeminiOauth, ThorJsonSerializer.DefaultOptions);
             }
         }
 
@@ -292,8 +294,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         var now = DateTime.UtcNow;
         var rowsAffected = await context.Accounts
-            .Where(x => x.Status == "rate_limited" && 
-                       (x.RateLimitedUntil == null || x.RateLimitedUntil < now))
+            .Where(x => x.Status == "rate_limited" &&
+                        (x.RateLimitedUntil == null || x.RateLimitedUntil < now))
             .ExecuteUpdateAsync(x => x
                 .SetProperty(a => a.Status, "active")
                 .SetProperty(a => a.RateLimitedUntil, (DateTime?)null)

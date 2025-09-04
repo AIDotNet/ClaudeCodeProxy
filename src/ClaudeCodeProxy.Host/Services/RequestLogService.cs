@@ -3,6 +3,7 @@ using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using ClaudeCodeProxy.Abstraction;
 
 namespace ClaudeCodeProxy.Host.Services;
 
@@ -46,7 +47,7 @@ public class RequestLogService(IContext context, WalletService walletService)
             UserAgent = userAgent,
             RequestId = requestId,
             IsStreaming = isStreaming,
-            Metadata = metadata != null ? JsonSerializer.Serialize(metadata) : null,
+            Metadata = metadata != null ? JsonSerializer.Serialize(metadata, ThorJsonSerializer.DefaultOptions) : null,
             CreatedAt = DateTime.Now
         };
 

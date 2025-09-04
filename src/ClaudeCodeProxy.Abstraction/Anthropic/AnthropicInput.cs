@@ -82,8 +82,10 @@ public sealed class AnthropicInput
     }
 
     [JsonPropertyName("thinking")] public AnthropicThinkingInput? Thinking { get; set; }
-    
+
     [JsonPropertyName("temperature")] public double? Temperature { get; set; }
+
+    [JsonPropertyName("metadata")] public Dictionary<string, object>? Metadata { get; set; }
 }
 
 public class AnthropicThinkingInput

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Search, Key, DollarSign, Activity, AlertCircle, Link, Clock, Shield, CheckCircle, XCircle, Pause } from "lucide-react";
+import { Search, Key, DollarSign, Activity, AlertCircle, Link, Clock, Shield, CheckCircle, XCircle, Pause, Trash2, RefreshCw } from "lucide-react";
 
 interface QuotaInfo {
   dailyCostLimit?: number;
@@ -48,21 +48,108 @@ interface QuotaInfo {
   };
 }
 
+const CACHE_KEY = 'quota_query_cache';
+
+interface CacheData {
+  apiKey: string;
+  quotaInfo: QuotaInfo;
+  timestamp: number;
+}
+
 export default function QuotaQueryPage() {
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasCachedData, setHasCachedData] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const queryQuota = async () => {
-    if (!apiKey.trim()) {
+  // Load cached API key on component mount
+  useEffect(() => {
+    const loadCachedApiKey = () => {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const cacheData: CacheData = JSON.parse(cached);
+          
+          if (cacheData.apiKey) {
+            setApiKey(cacheData.apiKey);
+            setHasCachedData(true);
+            // Auto query with cached API key
+            setTimeout(() => queryQuota(cacheData.apiKey), 100);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load cached data:', err);
+        localStorage.removeItem(CACHE_KEY);
+      }
+    };
+
+    loadCachedApiKey();
+  }, []);
+
+  // Auto refresh when user stays on page for long time
+  useEffect(() => {
+    let refreshInterval: NodeJS.Timeout;
+    
+    if (quotaInfo && apiKey.trim()) {
+      // Start auto refresh after 5 minutes, then every 5 minutes
+      refreshInterval = setInterval(() => {
+        if (!loading) {
+          setAutoRefresh(true);
+          queryQuota(undefined, true).finally(() => {
+            setTimeout(() => setAutoRefresh(false), 1000);
+          });
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [quotaInfo, apiKey, loading]);
+
+  const saveApiKeyToCache = (apiKey: string) => {
+    try {
+      const cacheData: CacheData = {
+        apiKey,
+        quotaInfo: {}, // Don't cache quota info
+        timestamp: Date.now() // Keep timestamp for potential future use
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      setHasCachedData(true);
+    } catch (err) {
+      console.error('Failed to save to cache:', err);
+    }
+  };
+
+  const clearCache = () => {
+    try {
+      localStorage.removeItem(CACHE_KEY);
+      setHasCachedData(false);
+      setApiKey('');
+      setQuotaInfo(null);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to clear cache:', err);
+    }
+  };
+
+  const queryQuota = async (keyToQuery?: string, isAutoRefresh = false) => {
+    const currentKey = keyToQuery || apiKey;
+    if (!currentKey.trim()) {
       setError('请输入API Key');
       return;
     }
 
     setLoading(true);
     setError(null);
-    setQuotaInfo(null);
+    // Don't clear quota info during auto refresh to avoid flashing
+    if (!isAutoRefresh) {
+      setQuotaInfo(null);
+    }
 
     try {
       // 这里调用后端API查询额度
@@ -71,7 +158,7 @@ export default function QuotaQueryPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
+        body: JSON.stringify({ apiKey: currentKey.trim() }),
       });
 
       if (!response.ok) {
@@ -80,6 +167,9 @@ export default function QuotaQueryPage() {
 
       const data = await response.json();
       setQuotaInfo(data);
+      
+      // Save API key to cache (not quota results)
+      saveApiKeyToCache(currentKey.trim());
     } catch (err) {
       setError(err instanceof Error ? err.message : '查询失败');
     } finally {
@@ -138,6 +228,20 @@ export default function QuotaQueryPage() {
               </CardTitle>
               <CardDescription>
                 输入您的API Key来查询当前的使用额度和余额信息
+                <div className="flex flex-col gap-1 mt-2">
+                  {hasCachedData && (
+                    <div className="flex items-center gap-1 text-blue-600 text-sm">
+                      <CheckCircle className="h-3 w-3" />
+                      已缓存API Key
+                    </div>
+                  )}
+                  {quotaInfo && (
+                    <div className="flex items-center gap-1 text-green-600 text-sm">
+                      <RefreshCw className={`h-3 w-3 ${autoRefresh ? 'animate-spin' : ''}`} />
+                      {autoRefresh ? '正在自动刷新...' : '每5分钟自动刷新'}
+                    </div>
+                  )}
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -152,11 +256,12 @@ export default function QuotaQueryPage() {
                   disabled={loading}
                 />
               </div>
-              <Button 
-                onClick={queryQuota} 
-                disabled={loading || !apiKey.trim()}
-                className="w-full"
-              >
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => queryQuota()} 
+                  disabled={loading || !apiKey.trim()}
+                  className="flex-1"
+                >
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
@@ -168,7 +273,20 @@ export default function QuotaQueryPage() {
                     查询额度
                   </>
                 )}
-              </Button>
+                </Button>
+                {hasCachedData && (
+                  <Button 
+                    variant="outline" 
+                    size="default"
+                    onClick={clearCache}
+                    disabled={loading}
+                    className="px-3"
+                    title="清除缓存的API Key"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </CardContent>
             </Card>
           </div>
