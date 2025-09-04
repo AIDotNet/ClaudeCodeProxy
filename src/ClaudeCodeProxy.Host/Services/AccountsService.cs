@@ -504,8 +504,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             return false;
         }
 
-        return latestAccount.IsEnabled &&
-               latestAccount.Status == "active" &&
+        return latestAccount is { IsEnabled: true, Status: "active" } &&
                (latestAccount.RateLimitedUntil == null || latestAccount.RateLimitedUntil < DateTime.Now);
     }
 
@@ -731,7 +730,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                     var now = DateTimeOffset.Now.ToUnixTimeSeconds();
                     // 检查ExpiresAt是否在有效范围内（毫秒时间戳）
                     var isExpired = oauth.ExpiresAt == 0 ||
-                                    (oauth.ExpiresAt > 0 && now >= (oauth.ExpiresAt - 60)); // 60秒提前刷新
+                                    (oauth.ExpiresAt > 0 && now >= (oauth.ExpiresAt - 120)); // 60秒提前刷新
                     if (isExpired)
                     {
                         logger.LogInformation("🔄 访问令牌即将过期，尝试刷新 for account {AccountId}", account.Id);

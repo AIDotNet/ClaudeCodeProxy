@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Search, Key, DollarSign, Activity, AlertCircle, Link, Clock, Shield, CheckCircle, XCircle, Pause, Trash2, RefreshCw } from "lucide-react";
+import { Search, Key, DollarSign, Activity, AlertCircle, Link, Clock, Shield, CheckCircle, XCircle, Pause, Trash2, RefreshCw, Timer } from "lucide-react";
 
 interface QuotaInfo {
   dailyCostLimit?: number;
@@ -44,7 +44,8 @@ interface QuotaInfo {
     };
     status?: 'active' | 'suspended' | 'expired';
     createdAt?: string;
-    expiresAt?: string; 
+    expiresAt?: string;
+    rateLimitedUntil?: string;
   };
 }
 
@@ -571,6 +572,22 @@ export default function QuotaQueryPage() {
                             <div>
                               <Label className="text-sm text-muted-foreground">过期时间</Label>
                               <p className="text-sm">{formatDate(quotaInfo.accountBinding.expiresAt)}</p>
+                            </div>
+                          )}
+                          
+                          {quotaInfo.accountBinding.rateLimitedUntil && 
+                           new Date(quotaInfo.accountBinding.rateLimitedUntil) > new Date() && (
+                            <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                              <Label className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Timer className="h-3 w-3 text-red-500" />
+                                限流解除时间
+                              </Label>
+                              <p className="text-sm text-red-600 dark:text-red-400 font-medium mt-1">
+                                {formatDate(quotaInfo.accountBinding.rateLimitedUntil)}
+                              </p>
+                              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                                账户当前处于限流状态
+                              </p>
                             </div>
                           )}
                         </div>

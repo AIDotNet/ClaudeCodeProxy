@@ -315,7 +315,7 @@ public class ApiKey : Entity<Guid>
         }
         
         // 添加绑定的账户（按优先级排序，排除默认账户）
-        if (AccountBindings != null && AccountBindings.Count > 0)
+        if (AccountBindings is { Count: > 0 })
         {
             var sortedBindings = AccountBindings
                 .Where(b => b.IsEnabled && b.AccountId != DefaultAccountId)

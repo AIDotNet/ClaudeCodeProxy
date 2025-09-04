@@ -16,7 +16,12 @@
       "Bash(git add:*)",
       "WebFetch(domain:platform.openai.com)",
       "WebSearch",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Read(/C:\\Users\\Administrator\\RiderProjects\\ClaudeCodeProxy\\src\\ClaudeCodeProxy.Domain/**)",
+      "Read(/C:\\Users\\Administrator\\RiderProjects\\ClaudeCodeProxy\\src\\ClaudeCodeProxy.Host\\Models/**)",
+      "Read(/C:\\Users\\Administrator\\RiderProjects\\ClaudeCodeProxy\\web/**)",
+      "Read(/C:\\Users\\Administrator\\RiderProjects\\ClaudeCodeProxy\\web\\src\\pages\\quota-query/**)",
+      "Read(/C:\\Users\\Administrator\\RiderProjects\\ClaudeCodeProxy\\web/**)"
     ],
     "deny": []
   }

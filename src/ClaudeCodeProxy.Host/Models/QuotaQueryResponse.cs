@@ -116,6 +116,11 @@ public class AccountBindingInfo
     /// 速率限制信息
     /// </summary>
     public RateLimitingInfo? RateLimiting { get; set; }
+
+    /// <summary>
+    /// 限流解除时间
+    /// </summary>
+    public DateTime? RateLimitedUntil { get; set; }
 }
 
 /// <summary>

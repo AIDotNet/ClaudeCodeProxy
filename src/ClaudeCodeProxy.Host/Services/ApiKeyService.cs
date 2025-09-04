@@ -615,6 +615,7 @@ public class ApiKeyService(IContext context)
                     },
                     CreatedAt = key.CreatedAt,
                     ExpiresAt = key.ExpiresAt,
+                    RateLimitedUntil = account.RateLimitedUntil,
 
                     // 速率限制信息（基于API Key的限制设置）
                     RateLimiting = new RateLimitingInfo
