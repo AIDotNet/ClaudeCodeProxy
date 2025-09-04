@@ -707,6 +707,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       />
                       <span className="text-sm text-foreground">
                         {form.platform === 'openai' ? 'OAuth 授权 (推荐)' : 
+                        // @ts-ignore
                          form.platform === 'thor' ? 'Token 快捷获取 (推荐)' : 
                          'OAuth 授权 (推荐)'}
                       </span>

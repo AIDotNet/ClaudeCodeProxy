@@ -1,4 +1,4 @@
-import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import {  RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
