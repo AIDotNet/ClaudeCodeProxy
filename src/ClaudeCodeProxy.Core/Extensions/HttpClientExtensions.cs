@@ -193,7 +193,11 @@ public static class HttpClientExtensions
             req.Headers.Add(header.Key, header.Value);
         }
 
-        req.Headers.Add("Host", "chatgpt.com");
+        if (url.StartsWith("https://chatgpt.com/backend-api/codex"))
+        {
+            req.Headers.Add("Host", "chatgpt.com");
+        }
+
 
         return await httpClient.SendAsync(req);
     }

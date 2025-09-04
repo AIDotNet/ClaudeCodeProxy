@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
 import { apiService } from '@/services/api';
-import type { ApiKey } from '@/services/api';
+import type { ApiKey, Account } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ApiKeyModalProps {
   open: boolean;
@@ -39,13 +40,16 @@ interface FormData {
   isEnabled: boolean;
   model: string;
   service: string;
+  defaultAccountId: string;
 }
 
 
 export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: ApiKeyModalProps) {
+  const { hasRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   const getInitialFormData = (editingKey?: ApiKey | null): FormData => {
     if (editingKey) {
@@ -71,7 +75,8 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
         allowedClients: editingKey.allowedClients || [],
         isEnabled: editingKey.isEnabled !== undefined ? editingKey.isEnabled : true,
         model: editingKey.model || '',
-        service: editingKey.service || 'all'
+        service: editingKey.service || 'all',
+        defaultAccountId: editingKey.defaultAccountId ? editingKey.defaultAccountId : 'none'
       };
     }
     return {
@@ -96,7 +101,8 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
       allowedClients: [],
       isEnabled: true,
       model: '',
-      service: 'all'
+      service: 'all',
+      defaultAccountId: 'none'
     };
   };
 
@@ -108,6 +114,35 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
     setNewTag('');
     setErrors({});
   }, [editingKey, open]);
+
+  // 获取账户列表（仅管理员）
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      // 调试日志
+      console.log('User role check:', {
+        hasAdminRole: hasRole('admin'),
+        hasAdministratorRole: hasRole('administrator'),
+        hasAdminCapitalRole: hasRole('Admin')
+      });
+      
+      if (hasRole('admin') || hasRole('administrator') || hasRole('Admin')) {
+        try {
+          console.log('Fetching accounts for admin user...');
+          const accountList = await apiService.getAccounts();
+          console.log('Accounts fetched:', accountList);
+          setAccounts(accountList);
+        } catch (error) {
+          console.error('Failed to fetch accounts:', error);
+        }
+      } else {
+        console.log('User does not have admin role, skipping account fetch');
+      }
+    };
+    
+    if (open) {
+      fetchAccounts();
+    }
+  }, [open, hasRole]);
 
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -197,7 +232,8 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
         allowedClients: formData.allowedClients.length > 0 ? formData.allowedClients : null,
         isEnabled: formData.isEnabled,
         model: formData.model || null,
-        service: formData.service
+        service: formData.service,
+        defaultAccountId: formData.defaultAccountId && formData.defaultAccountId !== 'none' ? formData.defaultAccountId : null
       };
 
       const result = editingKey 
@@ -285,6 +321,31 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
             <h3 className="text-lg font-semibold">服务配置</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              {/* 账户绑定（仅管理员） */}
+              {(hasRole('admin') || hasRole('administrator') || hasRole('Admin')) && accounts.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="boundAccountId">绑定账户 (管理员功能)</Label>
+                  <div className="text-xs text-gray-500 mb-2">
+                    当前值: "{formData.defaultAccountId}" | 编辑Key: {editingKey?.id || 'new'} | 账户数: {accounts.length}
+                  </div>
+                  <Select value={formData.defaultAccountId} onValueChange={(value) => updateFormData('defaultAccountId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择要绑定的账户（可选）" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">不绑定账户</SelectItem>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name} ({account.platform}) - {account.status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    绑定账户后，此 API Key 将优先使用指定的账户进行请求
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="permissions">服务权限</Label>

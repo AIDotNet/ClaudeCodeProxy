@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provide", "Provide", "{8271
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeCodeProxy.EntityFrameworkCore.Sqlite", "src\Provide\ClaudeCodeProxy.EntityFrameworkCore.Sqlite\ClaudeCodeProxy.EntityFrameworkCore.Sqlite.csproj", "{08F7CF60-51B5-410C-A658-C3FB090CA5A3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL", "src\Provide\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL.csproj", "{7537A331-CB10-4937-ABA7-B9AF949B9C78}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,7 @@ Global
 		{577AC59A-BEB1-4C83-9685-AFCA3136566D} = {B6C90088-68B7-46FE-ABD9-C919DD44E46A}
 		{8271D8CE-C39A-49D8-A154-77FC20F27E2C} = {B6C90088-68B7-46FE-ABD9-C919DD44E46A}
 		{08F7CF60-51B5-410C-A658-C3FB090CA5A3} = {8271D8CE-C39A-49D8-A154-77FC20F27E2C}
+		{7537A331-CB10-4937-ABA7-B9AF949B9C78} = {8271D8CE-C39A-49D8-A154-77FC20F27E2C}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{0F18B94E-7449-4DCA-AD17-746C7965ABA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -54,5 +57,9 @@ Global
 		{08F7CF60-51B5-410C-A658-C3FB090CA5A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{08F7CF60-51B5-410C-A658-C3FB090CA5A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{08F7CF60-51B5-410C-A658-C3FB090CA5A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7537A331-CB10-4937-ABA7-B9AF949B9C78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7537A331-CB10-4937-ABA7-B9AF949B9C78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7537A331-CB10-4937-ABA7-B9AF949B9C78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7537A331-CB10-4937-ABA7-B9AF949B9C78}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -33,6 +33,7 @@
       <ProjectReference Include="..\ClaudeCodeProxy.Abstraction\ClaudeCodeProxy.Abstraction.csproj" />
       <ProjectReference Include="..\ClaudeCodeProxy.Core\ClaudeCodeProxy.Core.csproj" />
       <ProjectReference Include="..\ClaudeCodeProxy.Domain\ClaudeCodeProxy.Domain.csproj" />
+      <ProjectReference Include="..\Provide\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL.csproj" />
       <ProjectReference Include="..\Provide\ClaudeCodeProxy.EntityFrameworkCore.Sqlite\ClaudeCodeProxy.EntityFrameworkCore.Sqlite.csproj" />
     </ItemGroup>
 

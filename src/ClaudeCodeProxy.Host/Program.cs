@@ -17,6 +17,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using System.Runtime.InteropServices;
 using ClaudeCodeProxy.Domain;
+using ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL;
 using ClaudeCodeProxy.Host.Middlewares;
 using Mapster;
 
@@ -281,7 +282,16 @@ public static class Program
 
         services.AddScoped<SessionHelper>();
 
-        services.AddEntityFrameworkCoreSqlite(configuration);
+        if (configuration.GetConnectionString("Type").Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            
+            services.AddEntityFrameworkCoreSqlite(configuration);
+        
+        }
+        else if (configuration.GetConnectionString("Type").Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddEntityFrameworkCorePostgreSQL(configuration);
+        }
 
         // 注册服务
         services.AddScoped<ApiKeyService>();

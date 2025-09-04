@@ -248,6 +248,7 @@ interface ApiKey {
   totalCost: number;
   model?: string;
   service: string;
+  defaultAccountId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -385,6 +386,17 @@ class ApiService {
     });
 
     if (!response.ok) {
+      // 检查是否是401未授权错误
+      if (response.status === 401) {
+        // 清除本地token
+        this.token = null;
+        localStorage.removeItem('token');
+        
+        // 跳转到登录页面
+        window.location.href = '/login';
+        return Promise.reject(new Error('登录已过期，请重新登录'));
+      }
+
       const result = await response.json();
       if (result.message) {
         throw new Error(result.message);

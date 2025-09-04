@@ -100,6 +100,7 @@ public class ApiKeyService(IContext context)
             IsEnabled = request.IsEnabled,
             Model = request.Model,
             Service = request.Service,
+            DefaultAccountId = request.DefaultAccountId,
             CreatedAt = DateTime.Now
         };
 
@@ -183,6 +184,9 @@ public class ApiKeyService(IContext context)
 
         if (!string.IsNullOrEmpty(request.Service))
             apiKey.Service = request.Service;
+
+        if (request.DefaultAccountId != null)
+            apiKey.DefaultAccountId = request.DefaultAccountId;
 
         apiKey.ModifiedAt = DateTime.Now;
         apiKey.Model = request.Model;
@@ -495,6 +499,26 @@ public class ApiKeyService(IContext context)
 
         await context.SaveAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// 更新API Key使用统计
+    /// </summary>
+    public async Task UpdateApiKeyUsageAsync(Guid apiKeyId, decimal cost, CancellationToken cancellationToken = default)
+    {
+        var today = DateTime.Now.Date;
+        var currentMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        
+        await context.ApiKeys
+            .Where(x => x.Id == apiKeyId)
+            .ExecuteUpdateAsync(x => x
+                .SetProperty(a => a.DailyCostUsed, a => a.DailyCostUsed + cost)
+                .SetProperty(a => a.MonthlyCostUsed, a => a.MonthlyCostUsed + cost) 
+                .SetProperty(a => a.TotalCost, a => a.TotalCost + cost)
+                .SetProperty(a => a.TotalUsageCount, a => a.TotalUsageCount + 1)
+                .SetProperty(a => a.LastUsedAt, DateTime.Now)
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), 
+                cancellationToken);
     }
 
     /// <summary>

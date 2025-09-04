@@ -13,6 +13,7 @@ COPY ["src/ClaudeCodeProxy.Host/ClaudeCodeProxy.Host.csproj", "src/ClaudeCodePro
 COPY ["src/ClaudeCodeProxy.Abstraction/ClaudeCodeProxy.Abstraction.csproj", "src/ClaudeCodeProxy.Abstraction/"]
 COPY ["src/ClaudeCodeProxy.Domain/ClaudeCodeProxy.Domain.csproj", "src/ClaudeCodeProxy.Domain/"]
 COPY ["src/Provide/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/ClaudeCodeProxy.EntityFrameworkCore.Sqlite.csproj", "src/Provide/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/"]
+COPY ["src/Provide/ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL/ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL.csproj", "src/Provide/ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL/"]
 COPY ["src/ClaudeCodeProxy.Core/ClaudeCodeProxy.Core.csproj", "src/ClaudeCodeProxy.Core/"]
 RUN dotnet restore "src/ClaudeCodeProxy.Host/ClaudeCodeProxy.Host.csproj"
 COPY . .
