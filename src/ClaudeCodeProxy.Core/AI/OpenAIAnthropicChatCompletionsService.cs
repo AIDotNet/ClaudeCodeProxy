@@ -568,23 +568,22 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         {
             foreach (var property in anthropicTool.InputSchema.Properties)
             {
-                var propertyValueStr = property.Value?.ToString();
-                if (propertyValueStr != null)
+                if (property.Value?.description != null)
                 {
-                    try
+                    var definitionType = new ThorToolFunctionPropertyDefinition()
                     {
-                        var propertyDefinition =
-                            JsonSerializer.Deserialize<ThorToolFunctionPropertyDefinition>(propertyValueStr);
-                        if (propertyDefinition != null)
+                        Description = property.Value.description,
+                        Type = property.Value.type
+                    };
+                    if (property.Value?.items?.type != null)
+                    {
+                        definitionType.Items = new ThorToolFunctionPropertyDefinition()
                         {
-                            values.Add(property.Key, propertyDefinition);
-                        }
+                            Type = property.Value.items.type
+                        };
                     }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("测试：" + propertyValueStr);
-                        throw;
-                    }
+
+                    values.Add(property.Key, definitionType);
                 }
             }
         }
@@ -754,5 +753,4 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             }
         };
     }
-
 }
