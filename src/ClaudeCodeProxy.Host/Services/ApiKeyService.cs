@@ -34,7 +34,7 @@ public class ApiKeyService(IContext context)
         CancellationToken cancellationToken = default)
     {
         return await context.ApiKeys
-            .Where(x=>x.UserId == userContext.GetCurrentUserId())
+            .Where(x => x.UserId == userContext.GetCurrentUserId())
             .Include(x => x.User)
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedAt)
@@ -280,7 +280,8 @@ public class ApiKeyService(IContext context)
     /// <summary>
     /// 获取API Key并刷新费用使用状态
     /// </summary>
-    public async Task<ApiKey?> GetApiKeyWithRefreshedUsageAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<ApiKey?> GetApiKeyWithRefreshedUsageAsync(string key,
+        CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys
             .Include(x => x.User)
@@ -308,7 +309,7 @@ public class ApiKeyService(IContext context)
         var now = DateTime.Now;
         var today = now.Date;
         var currentMonth = new DateTime(now.Year, now.Month, 1);
-        
+
         bool needsUpdate = false;
 
         // 检查是否需要重置每日使用量
@@ -320,9 +321,9 @@ public class ApiKeyService(IContext context)
         }
 
         // 检查是否需要重置月度使用量
-        var lastUsedMonth = apiKey.LastUsedAt.HasValue ? 
-            new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1) : 
-            DateTime.MinValue;
+        var lastUsedMonth = apiKey.LastUsedAt.HasValue
+            ? new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1)
+            : DateTime.MinValue;
         if (lastUsedMonth < currentMonth && apiKey.MonthlyCostUsed > 0)
         {
             apiKey.MonthlyCostUsed = 0;
@@ -387,11 +388,12 @@ public class ApiKeyService(IContext context)
         }
 
         // 获取可用于绑定的账户（用户拥有的和全局账户）
-        var existingBoundAccountIds = apiKey.AccountBindings?.Select(b => b.AccountId).ToHashSet() ?? new HashSet<string>();
+        var existingBoundAccountIds =
+            apiKey.AccountBindings?.Select(b => b.AccountId).ToHashSet() ?? new HashSet<string>();
         var availableAccounts = await context.Accounts
-            .Where(a => a.IsEnabled && 
-                       (a.IsGlobal || a.OwnerUserId == apiKey.UserId) && 
-                       !existingBoundAccountIds.Contains(a.Id))
+            .Where(a => a.IsEnabled &&
+                        (a.IsGlobal || a.OwnerUserId == apiKey.UserId) &&
+                        !existingBoundAccountIds.Contains(a.Id))
             .ToListAsync(cancellationToken);
 
         var availableAccountDtos = availableAccounts.Select(account => new AvailableAccountDto
@@ -433,10 +435,10 @@ public class ApiKeyService(IContext context)
 
         // 验证账户存在且用户有权限使用
         var account = await context.Accounts
-            .FirstOrDefaultAsync(a => a.Id == accountId && 
-                                    a.IsEnabled && 
-                                    (a.IsGlobal || a.OwnerUserId == apiKey.UserId), 
-                               cancellationToken);
+            .FirstOrDefaultAsync(a => a.Id == accountId &&
+                                      a.IsEnabled &&
+                                      (a.IsGlobal || a.OwnerUserId == apiKey.UserId),
+                cancellationToken);
 
         if (account == null)
         {
@@ -473,9 +475,9 @@ public class ApiKeyService(IContext context)
         }
 
         var validAccounts = await context.Accounts
-            .Where(a => accountIds.Contains(a.Id) && 
-                       a.IsEnabled && 
-                       (a.IsGlobal || a.OwnerUserId == apiKey.UserId))
+            .Where(a => accountIds.Contains(a.Id) &&
+                        a.IsEnabled &&
+                        (a.IsGlobal || a.OwnerUserId == apiKey.UserId))
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
 
@@ -508,16 +510,16 @@ public class ApiKeyService(IContext context)
     {
         var today = DateTime.Now.Date;
         var currentMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-        
+
         await context.ApiKeys
             .Where(x => x.Id == apiKeyId)
             .ExecuteUpdateAsync(x => x
-                .SetProperty(a => a.DailyCostUsed, a => a.DailyCostUsed + cost)
-                .SetProperty(a => a.MonthlyCostUsed, a => a.MonthlyCostUsed + cost) 
-                .SetProperty(a => a.TotalCost, a => a.TotalCost + cost)
-                .SetProperty(a => a.TotalUsageCount, a => a.TotalUsageCount + 1)
-                .SetProperty(a => a.LastUsedAt, DateTime.Now)
-                .SetProperty(a => a.ModifiedAt, DateTime.Now), 
+                    .SetProperty(a => a.DailyCostUsed, a => a.DailyCostUsed + cost)
+                    .SetProperty(a => a.MonthlyCostUsed, a => a.MonthlyCostUsed + cost)
+                    .SetProperty(a => a.TotalCost, a => a.TotalCost + cost)
+                    .SetProperty(a => a.TotalUsageCount, a => a.TotalUsageCount + 1)
+                    .SetProperty(a => a.LastUsedAt, DateTime.Now)
+                    .SetProperty(a => a.ModifiedAt, DateTime.Now),
                 cancellationToken);
     }
 
@@ -529,7 +531,7 @@ public class ApiKeyService(IContext context)
         return account.AccountType.ToLower() switch
         {
             "dedicated" => 10, // 专属账户优先级高
-            "shared" => 50,    // 共享账户中等优先级
+            "shared" => 50, // 共享账户中等优先级
             _ => 50
         };
     }
@@ -558,13 +560,13 @@ public class ApiKeyService(IContext context)
 
         // 统计今日使用量
         var dailyUsage = await context.RequestLogs
-            .Where(r => r.ApiKeyId == key.Id && r.CreatedAt >= today && r.Cost.HasValue)
-            .SumAsync(r => r.Cost!.Value, cancellationToken);
+            .Where(r => r.ApiKeyId == key.Id && r.CreatedAt >= today)
+            .SumAsync(r => r.Cost, cancellationToken);
 
         // 统计本月使用量
         var monthlyUsage = await context.RequestLogs
-            .Where(r => r.ApiKeyId == key.Id && r.CreatedAt >= currentMonth && r.Cost.HasValue)
-            .SumAsync(r => r.Cost!.Value, cancellationToken);
+            .Where(r => r.ApiKeyId == key.Id && r.CreatedAt >= currentMonth)
+            .SumAsync(r => r.Cost!, cancellationToken);
 
         var response = new QuotaQueryResponse
         {
@@ -572,17 +574,17 @@ public class ApiKeyService(IContext context)
             DailyCostLimit = key.DailyCostLimit > 0 ? key.DailyCostLimit : null,
             DailyCostUsed = dailyUsage,
             DailyAvailable = key.DailyCostLimit > 0 ? Math.Max(0, key.DailyCostLimit - dailyUsage) : null,
-            
+
             // 月度额度信息（从请求日志统计）
             MonthlyCostLimit = key.MonthlyCostLimit > 0 ? key.MonthlyCostLimit : null,
             MonthlyCostUsed = monthlyUsage,
             MonthlyAvailable = key.MonthlyCostLimit > 0 ? Math.Max(0, key.MonthlyCostLimit - monthlyUsage) : null,
-            
+
             // 总额度信息（使用累计字段）
             TotalCostLimit = key.TotalCostLimit > 0 ? key.TotalCostLimit : null,
             TotalCostUsed = key.TotalCost,
             TotalAvailable = key.TotalCostLimit > 0 ? Math.Max(0, key.TotalCostLimit - key.TotalCost) : null,
-            
+
             Organization = new OrganizationInfo
             {
                 Name = key.User.Username + " Organization",
@@ -613,7 +615,7 @@ public class ApiKeyService(IContext context)
                     },
                     CreatedAt = key.CreatedAt,
                     ExpiresAt = key.ExpiresAt,
-                    
+
                     // 速率限制信息（基于API Key的限制设置）
                     RateLimiting = new RateLimitingInfo
                     {
@@ -621,7 +623,7 @@ public class ApiKeyService(IContext context)
                         RequestsPerMinute = key.RateLimitWindow == 1 ? key.RateLimitRequests : null,
                         RequestsPerHour = key.RateLimitWindow == 60 ? key.RateLimitRequests : null,
                         RequestsPerDay = key.RateLimitWindow == 1440 ? key.RateLimitRequests : null,
-                        
+
                         // 这里可以添加实际的使用量统计，目前使用模拟数据
                         CurrentUsage = new CurrentUsage
                         {
@@ -629,7 +631,7 @@ public class ApiKeyService(IContext context)
                             Hour = 0,
                             Day = (int)(key.TotalUsageCount % 100) // 简化的模拟数据
                         },
-                        
+
                         ResetTimes = new ResetTimes
                         {
                             Minute = DateTime.Now.AddMinutes(1 - DateTime.Now.Minute % 1).ToString("HH:mm:ss"),
