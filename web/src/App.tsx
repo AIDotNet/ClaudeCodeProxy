@@ -1,4 +1,4 @@
-import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import {  RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -20,6 +20,7 @@ import PersonalDashboardPage from '@/pages/personal-dashboard';
 import RedeemCodesPage from '@/pages/redeem-codes';
 import InviteFriendsPage from '@/pages/invite-friends';
 import AnnouncementsPage from '@/pages/announcements';
+import QuotaQueryPage from '@/pages/quota-query';
 import './App.css';
 
 const router = createBrowserRouter([
@@ -34,6 +35,10 @@ const router = createBrowserRouter([
   {
     path: '/auth/callback/:provider',
     element: <OAuthCallbackPage />,
+  },
+  {
+    path: '/quota-query',
+    element: <QuotaQueryPage />,
   },
   {
     path: '/',
@@ -57,10 +62,6 @@ const router = createBrowserRouter([
       { path: 'invite-friends', element: <InviteFriendsPage /> },
       { path: 'announcements', element: <AnnouncementsPage /> },
     ],
-  },
-  {
-    path: '*',
-    element: <Navigate to="/" replace />,
   },
 ]);
 

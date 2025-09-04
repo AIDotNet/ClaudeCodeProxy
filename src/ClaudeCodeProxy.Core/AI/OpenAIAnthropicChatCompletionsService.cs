@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using ClaudeCodeProxy.Abstraction;
+using ClaudeCodeProxy.Abstraction.Anthropic;
 using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
 using Thor.Abstractions;

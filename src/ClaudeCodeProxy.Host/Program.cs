@@ -17,7 +17,9 @@ using Scalar.AspNetCore;
 using Serilog;
 using System.Runtime.InteropServices;
 using ClaudeCodeProxy.Domain;
+using ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL;
 using ClaudeCodeProxy.Host.Middlewares;
+using ClaudeCodeProxy.Host.Services.AI;
 using Mapster;
 
 namespace ClaudeCodeProxy.Host;
@@ -281,7 +283,18 @@ public static class Program
 
         services.AddScoped<SessionHelper>();
 
-        services.AddEntityFrameworkCoreSqlite(configuration);
+        if (configuration.GetConnectionString("Type").Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            
+            services.AddEntityFrameworkCoreSqlite(configuration);
+        
+        }
+        else if (configuration.GetConnectionString("Type").Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+        {
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+            AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
+            services.AddEntityFrameworkCorePostgreSQL(configuration);
+        }
 
         // 注册服务
         services.AddScoped<ApiKeyService>();
@@ -377,6 +390,7 @@ public static class Program
 
         // 配置API端点
         app.MapApiKeyEndpoints();
+        app.MapQuotaEndpoints();
         app.MapAccountEndpoints();
         app.MapUserEndpoints();
         app.MapUserAccountBindingEndpoints();

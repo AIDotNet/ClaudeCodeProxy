@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ClaudeCodeProxy.Abstraction;
+using Thor.Abstractions.Anthropic;
 
-namespace Thor.Abstractions.Anthropic;
+namespace ClaudeCodeProxy.Abstraction.Anthropic;
 
 public class AnthropicMessageInput
 {

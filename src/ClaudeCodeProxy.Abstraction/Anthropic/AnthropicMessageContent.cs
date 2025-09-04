@@ -10,6 +10,10 @@ public class AnthropicMessageContent
 
     private List<AnthropicMessageContent>? _contents;
     [JsonPropertyName("cache_control")] public AnthropicCacheControl? CacheControl { get; set; }
+    
+    [JsonPropertyName("signature")]  public string? Signature { get; set; }
+    
+    [JsonPropertyName("thinking")] public string? Thinking { get; set; }
 
     [JsonPropertyName("type")] public string Type { get; set; }
 

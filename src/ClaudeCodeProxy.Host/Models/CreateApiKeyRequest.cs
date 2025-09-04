@@ -27,5 +27,6 @@ public record CreateApiKeyRequest(
     List<string>? AllowedClients = null,
     bool IsEnabled = true,
     string? Model = null,
-    string Service = "claude"
+    string Service = "claude",
+    string? DefaultAccountId = null
 );

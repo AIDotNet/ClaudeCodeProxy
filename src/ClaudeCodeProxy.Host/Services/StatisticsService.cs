@@ -165,83 +165,83 @@ public class StatisticsService
         var today = DateTime.Now.Date;
         var now = DateTime.Now;
 
-        // 并行查询提高性能
-        var totalApiKeysTask = _context.ApiKeys
+        // 顺序查询，避免EF Core并发问题
+        var totalApiKeys = await _context.ApiKeys
             .Where(x => x.UserId == currentUserId)
             .CountAsync(cancellationToken);
-        var activeApiKeysTask =
-            _context.ApiKeys
-                .Where(x => x.UserId == currentUserId)
-                .CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.Now),
-                    cancellationToken);
+        var activeApiKeys = await _context.ApiKeys
+            .Where(x => x.UserId == currentUserId)
+            .CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.Now), cancellationToken);
 
-        int totalAccountsTask = 0;
-        int activeAccountsTask = 0;
-        int rateLimitedAccountsTask = 0;
+        int totalAccounts = 0;
+        int activeAccounts = 0;
+        int rateLimitedAccounts = 0;
         if (admin)
         {
-            totalAccountsTask = await _context.Accounts
+            totalAccounts = await _context.Accounts
                 .CountAsync(cancellationToken);
-            activeAccountsTask =
-                await _context.Accounts.CountAsync(x => x.IsEnabled && x.Status == "active", cancellationToken);
-            rateLimitedAccountsTask =
-                await _context.Accounts.CountAsync(x => x.Status == "rate_limited", cancellationToken);
+            activeAccounts = await _context.Accounts
+                .CountAsync(x => x.IsEnabled && x.Status == "active", cancellationToken);
+            rateLimitedAccounts = await _context.Accounts
+                .CountAsync(x => x.Status == "rate_limited", cancellationToken);
         }
 
-        var todayRequestsTask =
-            _context.RequestLogs
-                .Where(x=>x.UserId == currentUserId)
-                .Where(x => x.RequestDate == today).LongCountAsync(cancellationToken);
-        var totalRequestsTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).LongCountAsync(cancellationToken);
-        var todayInputTokensTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+        var todayRequests = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .Where(x => x.RequestDate == today)
+            .LongCountAsync(cancellationToken);
+        var totalRequests = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .LongCountAsync(cancellationToken);
+        var todayInputTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .Where(x => x.RequestDate == today)
             .SumAsync(x => (long)x.InputTokens, cancellationToken);
-        var todayOutputTokensTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+        var todayOutputTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .Where(x => x.RequestDate == today)
             .SumAsync(x => (long)x.OutputTokens, cancellationToken);
-        var todayCacheCreateTokensTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+        var todayCacheCreateTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .Where(x => x.RequestDate == today)
             .SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
-        var todayCacheReadTokensTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+        var todayCacheReadTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .Where(x => x.RequestDate == today)
             .SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
-        var totalInputTokensTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).SumAsync(x => (long)x.InputTokens, cancellationToken);
-        var totalOutputTokensTask = _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId).SumAsync(x => (long)x.OutputTokens, cancellationToken);
-        var totalCacheCreateTokensTask =
-            _context.RequestLogs
-                .Where(x=>x.UserId == currentUserId).SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
-        var totalCacheReadTokensTask = _context.RequestLogs.SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
-
-        await Task.WhenAll(
-            totalApiKeysTask, activeApiKeysTask,
-            todayRequestsTask, totalRequestsTask, todayInputTokensTask, todayOutputTokensTask,
-            todayCacheCreateTokensTask, todayCacheReadTokensTask, totalInputTokensTask,
-            totalOutputTokensTask, totalCacheCreateTokensTask, totalCacheReadTokensTask
-        );
+        var totalInputTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .SumAsync(x => (long)x.InputTokens, cancellationToken);
+        var totalOutputTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .SumAsync(x => (long)x.OutputTokens, cancellationToken);
+        var totalCacheCreateTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
+        var totalCacheReadTokens = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
+            .SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
 
         // 计算实时RPM和TPM
         var (rpm, tpm, isHistorical) = await CalculateRealtimeMetricsAsync(currentUserId,5, cancellationToken);
 
         return new DashboardResponse
         {
-            TotalApiKeys = await totalApiKeysTask,
-            ActiveApiKeys = await activeApiKeysTask,
-            TotalAccounts = totalAccountsTask,
-            ActiveAccounts = activeAccountsTask,
-            RateLimitedAccounts = rateLimitedAccountsTask,
-            TodayRequests = await todayRequestsTask,
-            TotalRequests = await totalRequestsTask,
-            TodayInputTokens = await todayInputTokensTask,
-            TodayOutputTokens = await todayOutputTokensTask,
-            TodayCacheCreateTokens = await todayCacheCreateTokensTask,
-            TodayCacheReadTokens = await todayCacheReadTokensTask,
-            TotalInputTokens = await totalInputTokensTask,
-            TotalOutputTokens = await totalOutputTokensTask,
-            TotalCacheCreateTokens = await totalCacheCreateTokensTask,
-            TotalCacheReadTokens = await totalCacheReadTokensTask,
+            TotalApiKeys = totalApiKeys,
+            ActiveApiKeys = activeApiKeys,
+            TotalAccounts = totalAccounts,
+            ActiveAccounts = activeAccounts,
+            RateLimitedAccounts = rateLimitedAccounts,
+            TodayRequests = todayRequests,
+            TotalRequests = totalRequests,
+            TodayInputTokens = todayInputTokens,
+            TodayOutputTokens = todayOutputTokens,
+            TodayCacheCreateTokens = todayCacheCreateTokens,
+            TodayCacheReadTokens = todayCacheReadTokens,
+            TotalInputTokens = totalInputTokens,
+            TotalOutputTokens = totalOutputTokens,
+            TotalCacheCreateTokens = totalCacheCreateTokens,
+            TotalCacheReadTokens = totalCacheReadTokens,
             RealtimeRPM = rpm,
             RealtimeTPM = tpm,
             MetricsWindow = 5,

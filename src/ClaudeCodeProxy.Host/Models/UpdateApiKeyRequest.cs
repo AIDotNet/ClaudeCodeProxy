@@ -25,5 +25,6 @@ public record UpdateApiKeyRequest(
     List<string>? RestrictedModels = null,
     bool? EnableClientRestriction = null,
     List<string>? AllowedClients = null,
-    string? Service = null
+    string? Service = null,
+    string? DefaultAccountId = null
 );

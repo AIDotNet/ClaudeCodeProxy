@@ -28,6 +28,14 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
             options.Address = "https://api.anthropic.com/";
         }
 
+        if (input.Thinking is not null && input.Thinking.BudgetTokens > 0 && input.MaxTokens != null)
+        {
+            if (input.Thinking.BudgetTokens > input.MaxTokens)
+            {
+                input.Thinking.BudgetTokens = input.MaxTokens.Value - 1;
+            }
+        }
+
         var client = HttpClientFactory.GetHttpClient(options.Address, config);
 
         var url = new Uri(options.Address);
@@ -58,10 +66,10 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
                     RetryAfterSeconds = (int)retryAfter,
                     Timestamp = DateTime.Now
                 };
-                
-                logger.LogWarning("Claude账户达到限流，需要等待 {RetryAfter} 秒。错误信息：{Error}", 
+
+                logger.LogWarning("Claude账户达到限流，需要等待 {RetryAfter} 秒。错误信息：{Error}",
                     retryAfter, error);
-                
+
                 throw new RateLimitException("Claude账户达到限流", rateLimitInfo);
             }
 
@@ -89,6 +97,14 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
             options.Address = "https://api.anthropic.com/";
         }
 
+        if (input.Thinking is not null && input.Thinking.BudgetTokens > 0 && input.MaxTokens != null)
+        {
+            if (input.Thinking.BudgetTokens > input.MaxTokens)
+            {
+                input.Thinking.BudgetTokens = input.MaxTokens.Value - 1;
+            }
+        }
+        
         var client = HttpClientFactory.GetHttpClient(options.Address, config);
 
         var url = new Uri(options.Address);
@@ -105,7 +121,8 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         if (response.StatusCode >= HttpStatusCode.BadRequest)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address.TrimEnd('/') + "/v1/messages?beta=true",
+            logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}",
+                options.Address.TrimEnd('/') + "/v1/messages?beta=true",
                 response.StatusCode, error);
 
             throw new Exception("OpenAI对话异常" + error);

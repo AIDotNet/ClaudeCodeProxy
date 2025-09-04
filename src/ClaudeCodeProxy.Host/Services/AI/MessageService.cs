@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;
 using Thor.Abstractions.Anthropic;
 
-namespace ClaudeCodeProxy.Host.Services;
+namespace ClaudeCodeProxy.Host.Services.AI;
 
 [MiniApi(Route = "/v1/messages", Tags = "Messages")]
 public partial class MessageService(
@@ -292,6 +292,8 @@ public partial class MessageService(
                     if (isFirst)
                     {
                         httpContext.SetEventStreamHeaders();
+                        // 添加配额响应头（流式响应）
+                        AddQuotaHeaders(httpContext, apiKeyValue);
                         isFirst = false;
                     }
 
@@ -363,6 +365,17 @@ public partial class MessageService(
                 status: "success",
                 httpStatusCode: 200,
                 cancellationToken: cancellationToken);
+
+            // 更新API Key使用统计
+            var keyService = httpContext.RequestServices.GetRequiredService<ApiKeyService>();
+            await keyService.UpdateApiKeyUsageAsync(apiKeyValue.Id, cost, cancellationToken);
+
+            // 扣除钱包余额
+            var walletService = httpContext.RequestServices.GetRequiredService<WalletService>();
+            await walletService.DeductWalletAsync(apiKeyValue.UserId, cost, $"API调用费用 - {request.Model}", requestLogId);
+
+            // 添加配额响应头
+            AddQuotaHeaders(httpContext, apiKeyValue);
         }
         catch (RateLimitException rateLimitEx)
         {
@@ -508,6 +521,9 @@ public partial class MessageService(
             var cacheCreateTokens = 0;
             var cacheReadTokens = 0;
 
+            // 添加配额响应头
+            AddQuotaHeaders(httpContext, apiKeyValue);
+            
             if (request.Stream)
             {
                 // 是否第一次输出
@@ -523,6 +539,8 @@ public partial class MessageService(
                     if (isFirst)
                     {
                         httpContext.SetEventStreamHeaders();
+                        // 添加配额响应头（流式响应）
+                        AddQuotaHeaders(httpContext, apiKeyValue);
                         isFirst = false;
                     }
 
@@ -588,10 +606,6 @@ public partial class MessageService(
             var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
                 cacheReadTokens, httpContext);
 
-            // 注意：我们不能直接修改实体然后保存，需要通过服务方法来更新
-            // 这里只是增加使用计数，具体的更新逻辑应该在服务层处理
-            // 可以考虑创建专门的方法来更新使用统计
-
             // 完成请求日志记录（成功）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
@@ -603,6 +617,15 @@ public partial class MessageService(
                 status: "success",
                 httpStatusCode: 200,
                 cancellationToken: cancellationToken);
+
+            // 更新API Key使用统计
+            var keyService = httpContext.RequestServices.GetRequiredService<ApiKeyService>();
+            await keyService.UpdateApiKeyUsageAsync(apiKeyValue.Id, cost, cancellationToken);
+
+            // 扣除钱包余额
+            var walletService = httpContext.RequestServices.GetRequiredService<WalletService>();
+            await walletService.DeductWalletAsync(apiKeyValue.UserId, cost, $"API调用费用 - {request.Model}", requestLogId);
+
         }
         catch (RateLimitException rateLimitEx)
         {
@@ -867,6 +890,9 @@ public partial class MessageService(
             var cacheCreateTokens = 0;
             var cacheReadTokens = 0;
 
+            // 添加配额响应头
+            AddQuotaHeaders(httpContext, apiKeyValue);
+
             if (request.Stream)
             {
                 // 是否第一次输出
@@ -882,6 +908,8 @@ public partial class MessageService(
                     if (isFirst)
                     {
                         httpContext.SetEventStreamHeaders();
+                        // 添加配额响应头（流式响应）
+                        AddQuotaHeaders(httpContext, apiKeyValue);
                         isFirst = false;
                     }
 
@@ -947,10 +975,6 @@ public partial class MessageService(
             var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
                 cacheReadTokens, httpContext);
 
-            // 注意：我们不能直接修改实体然后保存，需要通过服务方法来更新
-            // 这里只是增加使用计数，具体的更新逻辑应该在服务层处理
-            // 可以考虑创建专门的方法来更新使用统计
-
             // 完成请求日志记录（成功）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
@@ -962,6 +986,17 @@ public partial class MessageService(
                 status: "success",
                 httpStatusCode: 200,
                 cancellationToken: cancellationToken);
+
+            // 更新API Key使用统计
+            var keyService = httpContext.RequestServices.GetRequiredService<ApiKeyService>();
+            await keyService.UpdateApiKeyUsageAsync(apiKeyValue.Id, cost, cancellationToken);
+
+            // 扣除钱包余额
+            var walletService = httpContext.RequestServices.GetRequiredService<WalletService>();
+            await walletService.DeductWalletAsync(apiKeyValue.UserId, cost, $"API调用费用 - {request.Model}", requestLogId);
+
+            // 检测并同步Claude API响应头中的限流信息
+            await SyncRateLimitFromResponseHeaders(httpContext, account, cancellationToken);
         }
         catch (RateLimitException rateLimitEx)
         {
@@ -1147,6 +1182,54 @@ public partial class MessageService(
     }
 
     /// <summary>
+    /// 添加API Key配额响应头
+    /// </summary>
+    private void AddQuotaHeaders(HttpContext httpContext, ApiKey apiKey)
+    {
+        // 计算每日限额剩余
+        if (apiKey.DailyCostLimit > 0)
+        {
+            var dailyRemaining = Math.Max(0, apiKey.DailyCostLimit - apiKey.DailyCostUsed);
+            var dailyUsagePercent = apiKey.DailyCostUsed / apiKey.DailyCostLimit;
+
+            // 模拟 token 限额（假设每美元约等于 4000 tokens，这是一个粗略估算）
+            var tokensPerDollar = 4000m;
+            var dailyTokensLimit = (int)(apiKey.DailyCostLimit * tokensPerDollar);
+            var dailyTokensRemaining = (int)(dailyRemaining * tokensPerDollar);
+
+            httpContext.Response.Headers["anthropic-priority-input-tokens-limit"] = dailyTokensLimit.ToString();
+            httpContext.Response.Headers["anthropic-priority-input-tokens-remaining"] = dailyTokensRemaining.ToString();
+            httpContext.Response.Headers["anthropic-priority-input-tokens-reset"] =
+                DateTime.UtcNow.AddDays(1).Date.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+            httpContext.Response.Headers["anthropic-priority-output-tokens-limit"] = dailyTokensLimit.ToString();
+            httpContext.Response.Headers["anthropic-priority-output-tokens-remaining"] =
+                dailyTokensRemaining.ToString();
+            httpContext.Response.Headers["anthropic-priority-output-tokens-reset"] =
+                DateTime.UtcNow.AddDays(1).Date.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        }
+
+        // 如果没有每日限额但有总限额，使用总限额
+        else if (apiKey.TotalCostLimit > 0)
+        {
+            var totalRemaining = Math.Max(0, apiKey.TotalCostLimit - apiKey.TotalCost);
+            var tokensPerDollar = 4000m;
+            var totalTokensLimit = (int)(apiKey.TotalCostLimit * tokensPerDollar);
+            var totalTokensRemaining = (int)(totalRemaining * tokensPerDollar);
+
+            httpContext.Response.Headers["anthropic-priority-input-tokens-limit"] = totalTokensLimit.ToString();
+            httpContext.Response.Headers["anthropic-priority-input-tokens-remaining"] = totalTokensRemaining.ToString();
+            httpContext.Response.Headers["anthropic-priority-input-tokens-reset"] =
+                "2099-12-31T23:59:59Z"; // 很远的未来时间表示无重置
+
+            httpContext.Response.Headers["anthropic-priority-output-tokens-limit"] = totalTokensLimit.ToString();
+            httpContext.Response.Headers["anthropic-priority-output-tokens-remaining"] =
+                totalTokensRemaining.ToString();
+            httpContext.Response.Headers["anthropic-priority-output-tokens-reset"] = "2099-12-31T23:59:59Z";
+        }
+    }
+
+    /// <summary>
     /// 根据账户配置映射请求的模型
     /// </summary>
     /// <param name="requestedModel">请求的原始模型</param>
@@ -1186,6 +1269,92 @@ public partial class MessageService(
         {
             // 解析失败时，返回原始模型
             return requestedModel;
+        }
+    }
+
+    /// <summary>
+    /// 从Claude API响应头同步限流信息到账户
+    /// </summary>
+    private async Task SyncRateLimitFromResponseHeaders(HttpContext httpContext, Accounts? account,
+        CancellationToken cancellationToken)
+    {
+        if (account == null || account.Platform != "claude") return;
+
+        try
+        {
+            var responseHeaders = httpContext.Response.Headers;
+            var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+
+            // Claude API 限流相关响应头
+            var rateLimitLimit = responseHeaders["anthropic-ratelimit-requests-limit"].FirstOrDefault();
+            var rateLimitRemaining = responseHeaders["anthropic-ratelimit-requests-remaining"].FirstOrDefault();
+            var rateLimitReset = responseHeaders["anthropic-ratelimit-requests-reset"].FirstOrDefault();
+            var retryAfter = responseHeaders["retry-after"].FirstOrDefault();
+
+            // 检查是否接近限流
+            if (!string.IsNullOrEmpty(rateLimitLimit) && !string.IsNullOrEmpty(rateLimitRemaining))
+            {
+                if (int.TryParse(rateLimitLimit, out var limit) && int.TryParse(rateLimitRemaining, out var remaining))
+                {
+                    var usagePercent = (double)(limit - remaining) / limit * 100;
+
+                    logger.LogDebug("📊 账户 {AccountName} 限流状态: {Remaining}/{Limit} ({Usage:F1}%)",
+                        account.Name, remaining, limit, usagePercent);
+
+                    // 如果剩余请求数为0或接近限流，设置限流状态
+                    if (remaining <= 0)
+                    {
+                        DateTime rateLimitedUntil = DateTime.UtcNow.AddMinutes(5); // 默认5分钟
+
+                        // 尝试解析reset时间
+                        if (!string.IsNullOrEmpty(rateLimitReset))
+                        {
+                            if (DateTime.TryParse(rateLimitReset, out var resetTime))
+                            {
+                                rateLimitedUntil = resetTime;
+                            }
+                            else if (long.TryParse(rateLimitReset, out var unixTimestamp))
+                            {
+                                rateLimitedUntil = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(retryAfter))
+                        {
+                            if (int.TryParse(retryAfter, out var retryAfterSeconds))
+                            {
+                                rateLimitedUntil = DateTime.UtcNow.AddSeconds(retryAfterSeconds);
+                            }
+                        }
+
+                        await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil,
+                            $"Claude API响应头检测到限流: {remaining}/{limit}", cancellationToken);
+
+                        logger.LogWarning("⚠️ 账户 {AccountName} 根据响应头设置限流至 {RateLimitedUntil}",
+                            account.Name, rateLimitedUntil);
+                    }
+                    else if (usagePercent >= 90 && usagePercent < 100)
+                    {
+                        logger.LogWarning("⚠️ 账户 {AccountName} 接近限流: {Remaining}/{Limit} ({Usage:F1}%)",
+                            account.Name, remaining, limit, usagePercent);
+                    }
+                }
+            }
+
+            // 如果当前账户状态是限流，但响应成功，说明限流可能已解除
+            if (account.Status == "rate_limited" &&
+                (account.RateLimitedUntil == null || account.RateLimitedUntil < DateTime.UtcNow))
+            {
+                var recovered = await accountsService.RecoverRateLimitedAccountAsync(account.Id, cancellationToken);
+                if (recovered)
+                {
+                    logger.LogInformation("✅ 账户 {AccountName} 限流已自动恢复", account.Name);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+            logger.LogWarning(ex, "同步Claude API响应头限流信息失败");
         }
     }
 }

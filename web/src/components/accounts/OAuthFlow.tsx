@@ -196,12 +196,12 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
       let tokenInfo;
       if (platform === 'claude') {
         const result = await apiService.exchangeClaudeCode(data);
-        tokenInfo = result.data.claudeAiOauth;
+        tokenInfo = result.claudeAiOauth;
       } else if (platform === 'gemini') {
         tokenInfo = await apiService.exchangeGeminiCode(data);
       } else if (platform === 'openai') {
         const result = await apiService.exchangeOpenAiCode(data);
-        tokenInfo = result.data.openAiOauth;
+        tokenInfo = result.openAiOauth;
       }
       
       if (tokenInfo) {

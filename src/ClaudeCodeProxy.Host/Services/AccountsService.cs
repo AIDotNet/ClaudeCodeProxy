@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
@@ -145,7 +146,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             }
             else
             {
-                account.GeminiOauth = System.Text.Json.JsonSerializer.Serialize(request.GeminiOauth);
+                account.GeminiOauth =
+                    System.Text.Json.JsonSerializer.Serialize(request.GeminiOauth, ThorJsonSerializer.DefaultOptions);
             }
         }
 
@@ -267,6 +269,45 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
         return true;
+    }
+
+    /// <summary>
+    /// 恢复限流账户状态
+    /// </summary>
+    public async Task<bool> RecoverRateLimitedAccountAsync(string id, CancellationToken cancellationToken = default)
+    {
+        var rowsAffected = await context.Accounts
+            .Where(x => x.Id == id && x.Status == "rate_limited")
+            .ExecuteUpdateAsync(x => x
+                .SetProperty(a => a.Status, "active")
+                .SetProperty(a => a.RateLimitedUntil, (DateTime?)null)
+                .SetProperty(a => a.LastError, (string?)null)
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
+
+        return rowsAffected > 0;
+    }
+
+    /// <summary>
+    /// 批量恢复已过期的限流账户
+    /// </summary>
+    public async Task<int> RecoverExpiredRateLimitedAccountsAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var rowsAffected = await context.Accounts
+            .Where(x => x.Status == "rate_limited" &&
+                        (x.RateLimitedUntil == null || x.RateLimitedUntil < now))
+            .ExecuteUpdateAsync(x => x
+                .SetProperty(a => a.Status, "active")
+                .SetProperty(a => a.RateLimitedUntil, (DateTime?)null)
+                .SetProperty(a => a.LastError, (string?)null)
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
+
+        if (rowsAffected > 0)
+        {
+            logger.LogInformation("🔄 自动恢复了 {Count} 个已过期的限流账户", rowsAffected);
+        }
+
+        return rowsAffected;
     }
 
     /// <summary>

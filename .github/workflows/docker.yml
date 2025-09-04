@@ -48,6 +48,6 @@ jobs:
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.dockerfile }}
-          platforms: linux/arm64,linux/amd64
+          platforms: linux/amd64
           push: true
           tags: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/koala-ai/${{ matrix.image.name }}

@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ClaudeCodeProxy.Abstraction;
+using ClaudeCodeProxy.Abstraction.Anthropic;
 
 namespace Thor.Abstractions.Anthropic;
 
@@ -79,6 +80,19 @@ public sealed class AnthropicInput
             }
         }
     }
+
+    [JsonPropertyName("thinking")] public AnthropicThinkingInput? Thinking { get; set; }
+
+    [JsonPropertyName("temperature")] public double? Temperature { get; set; }
+
+    [JsonPropertyName("metadata")] public Dictionary<string, object>? Metadata { get; set; }
+}
+
+public class AnthropicThinkingInput
+{
+    [JsonPropertyName("type")] public string Type { get; set; }
+
+    [JsonPropertyName("budget_tokens")] public int BudgetTokens { get; set; }
 }
 
 public class AnthropicTooChoiceInput
