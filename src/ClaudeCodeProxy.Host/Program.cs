@@ -290,6 +290,8 @@ public static class Program
         }
         else if (configuration.GetConnectionString("Type").Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
         {
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+            AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
             services.AddEntityFrameworkCorePostgreSQL(configuration);
         }
 
