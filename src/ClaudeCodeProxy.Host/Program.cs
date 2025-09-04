@@ -387,6 +387,7 @@ public static class Program
 
         // 配置API端点
         app.MapApiKeyEndpoints();
+        app.MapQuotaEndpoints();
         app.MapAccountEndpoints();
         app.MapUserEndpoints();
         app.MapUserAccountBindingEndpoints();

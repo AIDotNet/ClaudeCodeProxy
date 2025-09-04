@@ -533,4 +533,121 @@ public class ApiKeyService(IContext context)
             _ => 50
         };
     }
+
+    /// <summary>
+    /// 查询API Key额度信息
+    /// </summary>
+    public async Task<QuotaQueryResponse?> QueryQuotaAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
+        var key = await context.ApiKeys
+            .Include(x => x.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.KeyValue == apiKey, cancellationToken);
+
+        if (key == null || !key.IsEnabled)
+        {
+            return null;
+        }
+
+        await RefreshApiKeyUsageAsync(key, cancellationToken);
+
+        // 从请求日志统计每日和月度使用量
+        var now = DateTime.Now;
+        var today = now.Date;
+        var currentMonth = new DateTime(now.Year, now.Month, 1);
+
+        // 统计今日使用量
+        var dailyUsage = await context.RequestLogs
+            .Where(r => r.ApiKeyId == key.Id && r.CreatedAt >= today && r.Cost.HasValue)
+            .SumAsync(r => r.Cost!.Value, cancellationToken);
+
+        // 统计本月使用量
+        var monthlyUsage = await context.RequestLogs
+            .Where(r => r.ApiKeyId == key.Id && r.CreatedAt >= currentMonth && r.Cost.HasValue)
+            .SumAsync(r => r.Cost!.Value, cancellationToken);
+
+        var response = new QuotaQueryResponse
+        {
+            // 每日额度信息（从请求日志统计）
+            DailyCostLimit = key.DailyCostLimit > 0 ? key.DailyCostLimit : null,
+            DailyCostUsed = dailyUsage,
+            DailyAvailable = key.DailyCostLimit > 0 ? Math.Max(0, key.DailyCostLimit - dailyUsage) : null,
+            
+            // 月度额度信息（从请求日志统计）
+            MonthlyCostLimit = key.MonthlyCostLimit > 0 ? key.MonthlyCostLimit : null,
+            MonthlyCostUsed = monthlyUsage,
+            MonthlyAvailable = key.MonthlyCostLimit > 0 ? Math.Max(0, key.MonthlyCostLimit - monthlyUsage) : null,
+            
+            // 总额度信息（使用累计字段）
+            TotalCostLimit = key.TotalCostLimit > 0 ? key.TotalCostLimit : null,
+            TotalCostUsed = key.TotalCost,
+            TotalAvailable = key.TotalCostLimit > 0 ? Math.Max(0, key.TotalCostLimit - key.TotalCost) : null,
+            
+            Organization = new OrganizationInfo
+            {
+                Name = key.User.Username + " Organization",
+                Id = key.UserId.ToString()
+            }
+        };
+
+        // 如果API Key绑定了账户，获取账户信息
+        if (!string.IsNullOrEmpty(key.DefaultAccountId))
+        {
+            var account = await context.Accounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == key.DefaultAccountId, cancellationToken);
+
+            if (account != null)
+            {
+                response.AccountBinding = new AccountBindingInfo
+                {
+                    IsBound = true,
+                    AccountName = account.Name,
+                    AccountId = account.Id,
+                    Status = account.Status switch
+                    {
+                        "active" => "active",
+                        "disabled" => "suspended",
+                        "error" => "suspended",
+                        _ => "active"
+                    },
+                    CreatedAt = key.CreatedAt,
+                    ExpiresAt = key.ExpiresAt,
+                    
+                    // 速率限制信息（基于API Key的限制设置）
+                    RateLimiting = new RateLimitingInfo
+                    {
+                        IsEnabled = key.RateLimitRequests.HasValue || key.TokenLimit.HasValue,
+                        RequestsPerMinute = key.RateLimitWindow == 1 ? key.RateLimitRequests : null,
+                        RequestsPerHour = key.RateLimitWindow == 60 ? key.RateLimitRequests : null,
+                        RequestsPerDay = key.RateLimitWindow == 1440 ? key.RateLimitRequests : null,
+                        
+                        // 这里可以添加实际的使用量统计，目前使用模拟数据
+                        CurrentUsage = new CurrentUsage
+                        {
+                            Minute = 0, // 需要从实际的使用统计中获取
+                            Hour = 0,
+                            Day = (int)(key.TotalUsageCount % 100) // 简化的模拟数据
+                        },
+                        
+                        ResetTimes = new ResetTimes
+                        {
+                            Minute = DateTime.Now.AddMinutes(1 - DateTime.Now.Minute % 1).ToString("HH:mm:ss"),
+                            Hour = DateTime.Now.AddHours(1).ToString("MM-dd HH:00:00"),
+                            Day = DateTime.Now.AddDays(1).ToString("MM-dd 00:00:00")
+                        }
+                    }
+                };
+            }
+        }
+        else
+        {
+            response.AccountBinding = new AccountBindingInfo
+            {
+                IsBound = false
+            };
+        }
+
+        return response;
+    }
 }

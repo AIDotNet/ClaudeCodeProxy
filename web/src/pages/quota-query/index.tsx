@@ -9,36 +9,42 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Search, Key, DollarSign, Activity, AlertCircle, Link, Clock, Shield, CheckCircle, XCircle, Pause } from "lucide-react";
 
 interface QuotaInfo {
-  total_granted?: number;
-  total_used?: number;
-  total_available?: number;
+  dailyCostLimit?: number;
+  dailyCostUsed?: number;
+  dailyAvailable?: number;
+  monthlyCostLimit?: number;
+  monthlyCostUsed?: number;
+  monthlyAvailable?: number;
+  totalCostLimit?: number;
+  totalCostUsed?: number;
+  totalAvailable?: number;
   organization?: {
     name: string;
     id: string;
   };
-  account_binding?: {
-    is_bound: boolean;
-    account_name?: string;
-    account_id?: string;
-    rate_limiting?: {
-      is_enabled: boolean;
-      requests_per_minute?: number;
-      requests_per_hour?: number;
-      requests_per_day?: number;
-      current_usage?: {
+  accountBinding?: {
+    isBound: boolean;
+    accountName?: string;
+    accountId?: string;
+    rateLimiting?: {
+      isEnabled: boolean;
+      requestsPerMinute?: number;
+      requestsPerHour?: number;
+      requestsPerDay?: number;
+      currentUsage?: {
         minute: number;
         hour: number;
         day: number;
       };
-      reset_times?: {
+      resetTimes?: {
         minute: string;
         hour: string;
         day: string;
       };
     };
     status?: 'active' | 'suspended' | 'expired';
-    created_at?: string;
-    expires_at?: string;
+    createdAt?: string;
+    expiresAt?: string; 
   };
 }
 
@@ -121,9 +127,10 @@ export default function QuotaQueryPage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
           {/* Query Form */}
-          <Card>
+          <div className="max-w-3xl mx-auto">
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Search className="h-5 w-5" />
@@ -163,18 +170,21 @@ export default function QuotaQueryPage() {
                 )}
               </Button>
             </CardContent>
-          </Card>
+            </Card>
+          </div>
 
           {/* Error Message */}
           {error && (
-            <Card className="border-destructive">
+            <div className="max-w-3xl mx-auto">
+              <Card className="border-destructive">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 text-destructive">
                   <AlertCircle className="h-5 w-5" />
                   <span>{error}</span>
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            </div>
           )}
 
           {/* Loading Skeleton */}
@@ -226,191 +236,11 @@ export default function QuotaQueryPage() {
                 </Card>
               )}
 
-              {/* Account Binding Info */}
-              {quotaInfo.account_binding && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Link className="h-5 w-5" />
-                      账户绑定信息
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm text-muted-foreground">绑定状态</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          {quotaInfo.account_binding.is_bound ? (
-                            <Badge variant="default" className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              已绑定
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">
-                              <XCircle className="h-3 w-3 mr-1" />
-                              未绑定
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {quotaInfo.account_binding.status && (
-                        <div>
-                          <Label className="text-sm text-muted-foreground">账户状态</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            {getStatusBadge(quotaInfo.account_binding.status)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {quotaInfo.account_binding.account_name && (
-                      <div>
-                        <Label className="text-sm text-muted-foreground">绑定账户</Label>
-                        <p className="font-medium">{quotaInfo.account_binding.account_name}</p>
-                        {quotaInfo.account_binding.account_id && (
-                          <p className="font-mono text-xs text-muted-foreground">ID: {quotaInfo.account_binding.account_id}</p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {quotaInfo.account_binding.created_at && (
-                        <div>
-                          <Label className="text-sm text-muted-foreground">绑定时间</Label>
-                          <p className="text-sm">{formatDate(quotaInfo.account_binding.created_at)}</p>
-                        </div>
-                      )}
-                      
-                      {quotaInfo.account_binding.expires_at && (
-                        <div>
-                          <Label className="text-sm text-muted-foreground">过期时间</Label>
-                          <p className="text-sm">{formatDate(quotaInfo.account_binding.expires_at)}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Rate Limiting Info */}
-                    {quotaInfo.account_binding.rate_limiting && (
-                      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-2 mb-4">
-                          <Shield className="h-5 w-5 text-blue-600" />
-                          <h4 className="font-medium">限流设置</h4>
-                          {quotaInfo.account_binding.rate_limiting.is_enabled ? (
-                            <Badge variant="default" className="bg-blue-100 text-blue-800">启用</Badge>
-                          ) : (
-                            <Badge variant="outline">未启用</Badge>
-                          )}
-                        </div>
-
-                        {quotaInfo.account_binding.rate_limiting.is_enabled && (
-                          <div className="space-y-4">
-                            {/* Rate Limits */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                              {quotaInfo.account_binding.rate_limiting.requests_per_minute && (
-                                <div className="text-center p-3 bg-background rounded border">
-                                  <div className="text-lg font-semibold text-blue-600">
-                                    {quotaInfo.account_binding.rate_limiting.requests_per_minute}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">请求/分钟</div>
-                                </div>
-                              )}
-                              
-                              {quotaInfo.account_binding.rate_limiting.requests_per_hour && (
-                                <div className="text-center p-3 bg-background rounded border">
-                                  <div className="text-lg font-semibold text-green-600">
-                                    {quotaInfo.account_binding.rate_limiting.requests_per_hour}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">请求/小时</div>
-                                </div>
-                              )}
-                              
-                              {quotaInfo.account_binding.rate_limiting.requests_per_day && (
-                                <div className="text-center p-3 bg-background rounded border">
-                                  <div className="text-lg font-semibold text-orange-600">
-                                    {quotaInfo.account_binding.rate_limiting.requests_per_day}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">请求/天</div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Current Usage */}
-                            {quotaInfo.account_binding.rate_limiting.current_usage && (
-                              <div>
-                                <Label className="text-sm text-muted-foreground mb-2 block">当前使用量</Label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                  <div className="flex justify-between items-center p-2 bg-background rounded border">
-                                    <span className="text-sm">分钟</span>
-                                    <span className="font-medium">
-                                      {quotaInfo.account_binding.rate_limiting.current_usage.minute}
-                                      {quotaInfo.account_binding.rate_limiting.requests_per_minute && 
-                                        `/${quotaInfo.account_binding.rate_limiting.requests_per_minute}`}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="flex justify-between items-center p-2 bg-background rounded border">
-                                    <span className="text-sm">小时</span>
-                                    <span className="font-medium">
-                                      {quotaInfo.account_binding.rate_limiting.current_usage.hour}
-                                      {quotaInfo.account_binding.rate_limiting.requests_per_hour && 
-                                        `/${quotaInfo.account_binding.rate_limiting.requests_per_hour}`}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="flex justify-between items-center p-2 bg-background rounded border">
-                                    <span className="text-sm">天</span>
-                                    <span className="font-medium">
-                                      {quotaInfo.account_binding.rate_limiting.current_usage.day}
-                                      {quotaInfo.account_binding.rate_limiting.requests_per_day && 
-                                        `/${quotaInfo.account_binding.rate_limiting.requests_per_day}`}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Reset Times */}
-                            {quotaInfo.account_binding.rate_limiting.reset_times && (
-                              <div>
-                                <Label className="text-sm text-muted-foreground mb-2 block flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  重置时间
-                                </Label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                                  {quotaInfo.account_binding.rate_limiting.reset_times.minute && (
-                                    <div className="p-2 bg-background rounded border">
-                                      <div className="text-muted-foreground">分钟重置</div>
-                                      <div className="font-mono">{quotaInfo.account_binding.rate_limiting.reset_times.minute}</div>
-                                    </div>
-                                  )}
-                                  
-                                  {quotaInfo.account_binding.rate_limiting.reset_times.hour && (
-                                    <div className="p-2 bg-background rounded border">
-                                      <div className="text-muted-foreground">小时重置</div>
-                                      <div className="font-mono">{quotaInfo.account_binding.rate_limiting.reset_times.hour}</div>
-                                    </div>
-                                  )}
-                                  
-                                  {quotaInfo.account_binding.rate_limiting.reset_times.day && (
-                                    <div className="p-2 bg-background rounded border">
-                                      <div className="text-muted-foreground">天重置</div>
-                                      <div className="font-mono">{quotaInfo.account_binding.rate_limiting.reset_times.day}</div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Quota Details */}
-              <Card>
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-1 xl:grid-cols-5 lg:grid-cols-3 gap-6">
+                {/* Left Column - Quota Details */}
+                <div className="xl:col-span-3 lg:col-span-2">
+                  <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="h-5 w-5" />
@@ -420,61 +250,348 @@ export default function QuotaQueryPage() {
                     API Key的额度使用情况统计
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Total Granted */}
-                    <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">总额度</Label>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(quotaInfo.total_granted)}
+                <CardContent className="space-y-6">
+                  {/* Daily Quota */}
+                  {(quotaInfo.dailyCostLimit !== undefined && quotaInfo.dailyCostLimit > 0) && (
+                    <div>
+                      <h4 className="font-medium mb-3 text-blue-600">每日额度</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">每日限制</Label>
+                          <div className="text-lg font-semibold text-blue-600">
+                            {formatCurrency(quotaInfo.dailyCostLimit)}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">今日已用</Label>
+                          <div className="text-lg font-semibold text-orange-600">
+                            {formatCurrency(quotaInfo.dailyCostUsed)}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">今日剩余</Label>
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatCurrency(quotaInfo.dailyAvailable)}
+                          </div>
+                        </div>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        Total Granted
-                      </Badge>
-                    </div>
-
-                    {/* Total Used */}
-                    <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">已使用</Label>
-                      <div className="text-2xl font-bold text-orange-600">
-                        {formatCurrency(quotaInfo.total_used)}
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        Total Used
-                      </Badge>
-                    </div>
-
-                    {/* Total Available */}
-                    <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">剩余额度</Label>
-                      <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(quotaInfo.total_available)}
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        Available
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Usage Progress */}
-                  {quotaInfo.total_granted !== undefined && quotaInfo.total_used !== undefined && quotaInfo.total_granted > 0 && (
-                    <div className="mt-6 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>使用率</span>
-                        <span>{((quotaInfo.total_used / quotaInfo.total_granted) * 100).toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, (quotaInfo.total_used / quotaInfo.total_granted) * 100)}%`
-                          }}
-                        ></div>
-                      </div>
+                      {quotaInfo.dailyCostLimit > 0 && quotaInfo.dailyCostUsed !== undefined && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>今日使用率</span>
+                            <span>{((quotaInfo.dailyCostUsed / quotaInfo.dailyCostLimit) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${Math.min(100, (quotaInfo.dailyCostUsed / quotaInfo.dailyCostLimit) * 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+
+                  {/* Monthly Quota */}
+                  {(quotaInfo.monthlyCostLimit !== undefined && quotaInfo.monthlyCostLimit > 0) && (
+                    <div>
+                      <h4 className="font-medium mb-3 text-purple-600">月度额度</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">月度限制</Label>
+                          <div className="text-lg font-semibold text-purple-600">
+                            {formatCurrency(quotaInfo.monthlyCostLimit)}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">本月已用</Label>
+                          <div className="text-lg font-semibold text-orange-600">
+                            {formatCurrency(quotaInfo.monthlyCostUsed)}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">本月剩余</Label>
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatCurrency(quotaInfo.monthlyAvailable)}
+                          </div>
+                        </div>
+                      </div>
+                      {quotaInfo.monthlyCostLimit > 0 && quotaInfo.monthlyCostUsed !== undefined && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>本月使用率</span>
+                            <span>{((quotaInfo.monthlyCostUsed / quotaInfo.monthlyCostLimit) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${Math.min(100, (quotaInfo.monthlyCostUsed / quotaInfo.monthlyCostLimit) * 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Total Quota */}
+                  {(quotaInfo.totalCostLimit !== undefined && quotaInfo.totalCostLimit > 0) && (
+                    <div>
+                      <h4 className="font-medium mb-3 text-red-600">总额度</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">总限制</Label>
+                          <div className="text-lg font-semibold text-red-600">
+                            {formatCurrency(quotaInfo.totalCostLimit)}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">总已用</Label>
+                          <div className="text-lg font-semibold text-orange-600">
+                            {formatCurrency(quotaInfo.totalCostUsed)}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">总剩余</Label>
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatCurrency(quotaInfo.totalAvailable)}
+                          </div>
+                        </div>
+                      </div>
+                      {quotaInfo.totalCostLimit > 0 && quotaInfo.totalCostUsed !== undefined && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>总使用率</span>
+                            <span>{((quotaInfo.totalCostUsed / quotaInfo.totalCostLimit) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="bg-red-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${Math.min(100, (quotaInfo.totalCostUsed / quotaInfo.totalCostLimit) * 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* No Limits Set */}
+                  {(!quotaInfo.dailyCostLimit || quotaInfo.dailyCostLimit === 0) && 
+                   (!quotaInfo.monthlyCostLimit || quotaInfo.monthlyCostLimit === 0) && 
+                   (!quotaInfo.totalCostLimit || quotaInfo.totalCostLimit === 0) && (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <DollarSign className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>此 API Key 未设置费用限制</p>
+                      <p className="text-sm">当前总消费：{formatCurrency(quotaInfo.totalCostUsed)}</p>
+                    </div>
+                  )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right Column - Account Binding Info */}
+                <div className="xl:col-span-2 lg:col-span-1">
+                  {quotaInfo.accountBinding ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Link className="h-5 w-5" />
+                          账户绑定信息
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-sm text-muted-foreground">绑定状态</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              {quotaInfo.accountBinding.isBound ? (
+                                <Badge variant="default" className="bg-green-100 text-green-800">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  已绑定
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  未绑定
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {quotaInfo.accountBinding.status && (
+                            <div>
+                              <Label className="text-sm text-muted-foreground">账户状态</Label>
+                              <div className="flex items-center gap-2 mt-1">
+                                {getStatusBadge(quotaInfo.accountBinding.status)}
+                              </div>
+                            </div>
+                          )}
+
+                          {quotaInfo.accountBinding.accountName && (
+                            <div>
+                              <Label className="text-sm text-muted-foreground">绑定账户</Label>
+                              <p className="font-medium">{quotaInfo.accountBinding.accountName}</p>
+                              {quotaInfo.accountBinding.accountId && (
+                                <p className="font-mono text-xs text-muted-foreground">ID: {quotaInfo.accountBinding.accountId}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {quotaInfo.accountBinding.createdAt && (
+                            <div>
+                              <Label className="text-sm text-muted-foreground">绑定时间</Label>
+                              <p className="text-sm">{formatDate(quotaInfo.accountBinding.createdAt)}</p>
+                            </div>
+                          )}
+                          
+                          {quotaInfo.accountBinding.expiresAt && (
+                            <div>
+                              <Label className="text-sm text-muted-foreground">过期时间</Label>
+                              <p className="text-sm">{formatDate(quotaInfo.accountBinding.expiresAt)}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Rate Limiting Info */}
+                        {quotaInfo.accountBinding.rateLimiting && (
+                          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Shield className="h-5 w-5 text-blue-600" />
+                              <h4 className="font-medium">限流设置</h4>
+                              {quotaInfo.accountBinding.rateLimiting.isEnabled ? (
+                                <Badge variant="default" className="bg-blue-100 text-blue-800">启用</Badge>
+                              ) : (
+                                <Badge variant="outline">未启用</Badge>
+                              )}
+                            </div>
+
+                            {quotaInfo.accountBinding.rateLimiting.isEnabled && (
+                              <div className="space-y-4">
+                                {/* Rate Limits */}
+                                <div className="space-y-2">
+                                  {quotaInfo.accountBinding.rateLimiting.requestsPerMinute && (
+                                    <div className="flex justify-between items-center p-2 bg-background rounded border">
+                                      <span className="text-sm">每分钟</span>
+                                      <span className="font-semibold text-blue-600">
+                                        {quotaInfo.accountBinding.rateLimiting.requestsPerMinute}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {quotaInfo.accountBinding.rateLimiting.requestsPerHour && (
+                                    <div className="flex justify-between items-center p-2 bg-background rounded border">
+                                      <span className="text-sm">每小时</span>
+                                      <span className="font-semibold text-green-600">
+                                        {quotaInfo.accountBinding.rateLimiting.requestsPerHour}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {quotaInfo.accountBinding.rateLimiting.requestsPerDay && (
+                                    <div className="flex justify-between items-center p-2 bg-background rounded border">
+                                      <span className="text-sm">每天</span>
+                                      <span className="font-semibold text-orange-600">
+                                        {quotaInfo.accountBinding.rateLimiting.requestsPerDay}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Current Usage */}
+                                {quotaInfo.accountBinding.rateLimiting.currentUsage && (
+                                  <div>
+                                    <Label className="text-sm text-muted-foreground mb-2 block">当前使用量</Label>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between items-center p-2 bg-background rounded border">
+                                        <span className="text-sm">分钟</span>
+                                        <span className="font-medium">
+                                          {quotaInfo.accountBinding.rateLimiting.currentUsage.minute} 
+                                          {quotaInfo.accountBinding.rateLimiting.requestsPerMinute && 
+                                            `/${quotaInfo.accountBinding.rateLimiting.requestsPerMinute}`}
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="flex justify-between items-center p-2 bg-background rounded border">
+                                        <span className="text-sm">小时</span>
+                                        <span className="font-medium">
+                                          {quotaInfo.accountBinding.rateLimiting.currentUsage.hour}
+                                          {quotaInfo.accountBinding.rateLimiting.requestsPerHour && 
+                                            `/${quotaInfo.accountBinding.rateLimiting.requestsPerHour}`}
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="flex justify-between items-center p-2 bg-background rounded border">
+                                        <span className="text-sm">天</span>
+                                        <span className="font-medium">
+                                          {quotaInfo.accountBinding.rateLimiting.currentUsage.day}
+                                          {quotaInfo.accountBinding.rateLimiting.requestsPerDay && 
+                                            `/${quotaInfo.accountBinding.rateLimiting.requestsPerDay}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Reset Times */}
+                                {quotaInfo.accountBinding.rateLimiting.resetTimes && (  
+                                  <div>
+                                    <Label className="text-sm text-muted-foreground mb-2 block flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      重置时间
+                                    </Label>
+                                    <div className="space-y-2 text-xs">
+                                      {quotaInfo.accountBinding.rateLimiting.resetTimes.minute && (
+                                        <div className="p-2 bg-background rounded border">
+                                          <div className="text-muted-foreground">分钟重置</div>
+                                          <div className="font-mono">{quotaInfo.accountBinding.rateLimiting.resetTimes.minute}</div>
+                                        </div>
+                                      )}
+                                      
+                                      {quotaInfo.accountBinding.rateLimiting.resetTimes.hour && (
+                                        <div className="p-2 bg-background rounded border">
+                                          <div className="text-muted-foreground">小时重置</div>
+                                          <div className="font-mono">{quotaInfo.accountBinding.rateLimiting.resetTimes.hour}</div>
+                                        </div>
+                                      )}
+                                      
+                                      {quotaInfo.accountBinding.rateLimiting.resetTimes.day && (  
+                                        <div className="p-2 bg-background rounded border">
+                                          <div className="text-muted-foreground">天重置</div>
+                                          <div className="font-mono">{quotaInfo.accountBinding.rateLimiting.resetTimes.day}</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Link className="h-5 w-5" />
+                          账户绑定信息
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-6 text-muted-foreground">
+                          <XCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p>此 API Key 未绑定任何账户</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
