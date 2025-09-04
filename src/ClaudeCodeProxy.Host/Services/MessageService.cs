@@ -165,6 +165,7 @@ public partial class MessageService(
 
         var account =
             await accountsService.SelectAccountForApiKey(apiKeyValue, sessionHash, request.Model,
+                request.Stream,
                 httpContext.RequestAborted);
 
         // 实现模型映射功能
@@ -224,7 +225,7 @@ public partial class MessageService(
             }
             else
             {
-                await HandleOpenAIAsync(httpContext, request, apiKeyValue, account, requestLog.Id, requestLogService,
+                await HandleOpenAiAsync(httpContext, request, apiKeyValue, account, requestLog.Id, requestLogService,
                     httpContext.RequestAborted);
             }
         }
@@ -475,7 +476,7 @@ public partial class MessageService(
         }
     }
 
-    private async Task HandleOpenAIAsync(
+    private async Task HandleOpenAiAsync(
         HttpContext httpContext,
         AnthropicInput request,
         ApiKey apiKeyValue,

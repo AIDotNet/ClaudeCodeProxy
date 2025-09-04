@@ -298,10 +298,11 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     /// <param name="apiKeyValue">API Key值</param>
     /// <param name="sessionHash">会话哈希</param>
     /// <param name="requestedModel">请求的模型</param>
+    /// <param name="requestStream"></param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>选中的账户</returns>
     public async Task<Accounts?> SelectAccountForApiKey(ApiKey apiKeyValue, string sessionHash,
-        string? requestedModel = null, CancellationToken cancellationToken = default)
+        string? requestedModel, bool requestStream, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -409,7 +410,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             // }
 
             // 4. 获取所有可用账户（传递请求的模型进行过滤）
-            var availableAccounts = await GetAllAvailableAccountsAsync(apiKeyValue, requestedModel, cancellationToken);
+            var availableAccounts =
+                await GetAllAvailableAccountsAsync(apiKeyValue, requestedModel, requestStream, cancellationToken);
 
             if (availableAccounts.Count == 0)
             {
@@ -469,7 +471,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     /// <summary>
     /// 获取所有可用账户（包含模型过滤）
     /// </summary>
-    private async Task<List<Accounts>> GetAllAvailableAccountsAsync(ApiKey apiKey, string? requestedModel = null,
+    private async Task<List<Accounts>> GetAllAvailableAccountsAsync(ApiKey apiKey, string? requestedModel,
+        bool requestStream,
         CancellationToken cancellationToken = default)
     {
         var query = context.Accounts
@@ -486,10 +489,29 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         accounts = accounts.Where(x =>
             (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now)).ToList();
 
+        if (!requestStream)
+        {
+            accounts = accounts.Where(x => x.OpenAiOauth == null).ToList();
+        }
+
         // 如果指定了模型，进一步过滤支持该模型的账户
         if (!string.IsNullOrEmpty(requestedModel))
         {
-            accounts = accounts.Where(account => DoesAccountSupportModel(account, requestedModel)).ToList();
+            accounts = accounts.Where(account => DoesAccountSupportModel(account, requestedModel))
+                .ToList();
+            
+            // 判断如果超过1个，优先选择有模型映射的账户
+            if (accounts.Count > 1)
+            {
+                // 将有模型映射的账户排在前面
+                var modelMappedAccounts = accounts.Where(a => a.SupportedModels != null && a.SupportedModels.Any(m =>
+                    m.Split(':', 2)[0].Trim().Equals(requestedModel, StringComparison.OrdinalIgnoreCase))).ToList();
+                
+                var otherAccounts = accounts.Except(modelMappedAccounts).ToList();
+                
+                // 重新组合：有映射的在前，其他的在后
+                accounts = modelMappedAccounts.Concat(otherAccounts).ToList();
+            }
         }
 
         return accounts;
@@ -541,8 +563,14 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         var now = DateTime.Now;
 
-        // 如果accounts绑定莫模型则优先使用绑定该模型的账户
-        if (!string.IsNullOrEmpty(requestedModel))
+        // 优先使用有OpenAI OAuth token的账户
+        var oauthAccounts = accounts.Where(a => !string.IsNullOrEmpty(a.OpenAiOauth?.AccessToken)).ToList();
+        if (oauthAccounts.Any())
+        {
+            accounts = oauthAccounts;
+        }
+        // 其次使用绑定了指定模型的账户
+        else if (!string.IsNullOrEmpty(requestedModel))
         {
             var boundAccounts = accounts.Where(a => a.SupportedModels != null && a.SupportedModels.Any(m =>
                 m.Split(':', 2)[0].Trim().Equals(requestedModel, StringComparison.OrdinalIgnoreCase))).ToList();
@@ -551,7 +579,6 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 accounts = boundAccounts;
             }
         }
-
         return accounts
             .Select(account => new
             {
@@ -838,9 +865,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     /// <summary>
     /// 获取用户绑定的账户（用于API Key选择）
     /// </summary>
-    private async Task<List<Accounts>> GetUserBoundAccountsForApiKeyAsync(
-        ApiKey apiKeyValue,
-        string? requestedModel = null,
+    private async Task<List<Accounts>> GetUserBoundAccountsForApiKeyAsync(ApiKey apiKeyValue,
+        string? requestedModel,
         CancellationToken cancellationToken = default)
     {
         var query = from account in context.Accounts
@@ -878,8 +904,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     /// <summary>
     /// 异步检查账户是否支持指定模型
     /// </summary>
-    private async Task<bool> DoesAccountSupportModelAsync(
-        Accounts account,
+    private async Task<bool> DoesAccountSupportModelAsync(Accounts account,
         string? model,
         CancellationToken cancellationToken = default)
     {
