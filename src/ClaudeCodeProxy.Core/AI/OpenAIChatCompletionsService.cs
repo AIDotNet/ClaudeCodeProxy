@@ -46,26 +46,28 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
         openai?.SetTag("Model", chatCompletionCreate.Model);
         openai?.SetTag("Response", response.StatusCode.ToString());
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        switch (response.StatusCode)
         {
-            throw new BusinessException("渠道未登录,请联系管理人员", "401");
+            case HttpStatusCode.Unauthorized:
+                throw new BusinessException("渠道未登录,请联系管理人员", "401");
+            // 大于等于400的状态码都认为是异常
+            case >= HttpStatusCode.BadRequest:
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address,
+                    response.StatusCode, error);
+
+                throw new BusinessException("OpenAI对话异常:" + error, response.StatusCode.ToString());
+            }
+            default:
+            {
+                var result =
+                    await response.Content.ReadFromJsonAsync<ThorChatCompletionsResponse>(
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                return result;
+            }
         }
-
-        // 大于等于400的状态码都认为是异常
-        if (response.StatusCode >= HttpStatusCode.BadRequest)
-        {
-            var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address,
-                response.StatusCode, error);
-
-            throw new BusinessException("OpenAI对话异常:" + error, response.StatusCode.ToString());
-        }
-
-        var result =
-            await response.Content.ReadFromJsonAsync<ThorChatCompletionsResponse>(
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        return result;
     }
 
     public async IAsyncEnumerable<ThorChatCompletionsResponse> StreamChatCompletionsAsync(

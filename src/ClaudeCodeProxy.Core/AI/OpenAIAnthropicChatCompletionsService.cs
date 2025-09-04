@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using ClaudeCodeProxy.Abstraction;
-using ClaudeCodeProxy.Abstraction.Anthropic;
 using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
 using Thor.Abstractions;
@@ -337,6 +336,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             Stream = anthropicInput.Stream,
             Messages = new List<ThorChatMessage>()
         };
+
 
         if (!string.IsNullOrEmpty(anthropicInput.System))
         {

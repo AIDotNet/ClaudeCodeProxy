@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ClaudeCodeProxy.Abstraction.Chats.Dtos;
 using Thor.Abstractions.Chats.Consts;
 using Thor.Abstractions.ObjectModels.ObjectModels.SharedModels;
 
@@ -273,6 +274,11 @@ public class ThorChatCompletionsRequest : IOpenAiModels.ITemperature, IOpenAiMod
     public string User { get; set; }
 
     [JsonPropertyName("thinking")] public ThorChatClaudeThinking Thinking { get; set; }
+
+    [JsonPropertyName("enable_thinking")] public bool? EnableThinking { get; set; }
+
+    [JsonPropertyName("web_search_options")]
+    public ThorChatWebSearchOptions? WebSearchOptions { get; set; } = null;
 
     /// <summary>
     ///     参数验证
