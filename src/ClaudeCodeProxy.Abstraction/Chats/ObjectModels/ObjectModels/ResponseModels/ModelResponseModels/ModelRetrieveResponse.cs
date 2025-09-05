@@ -4,7 +4,7 @@ using Thor.Abstractions.Dtos;
 namespace Thor.Abstractions.ObjectModels.ObjectModels.ResponseModels.ModelResponseModels;
 
 public record ModelRetrieveResponse : ModelResponse
-    // ReSharper disable once RedundantRecordBody
+// ReSharper disable once RedundantRecordBody
 {
 }
 

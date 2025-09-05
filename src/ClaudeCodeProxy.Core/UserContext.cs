@@ -1,33 +1,23 @@
-using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace ClaudeCodeProxy.Core;
 
-public class UserContext : IUserContext
+public class UserContext(IHttpContextAccessor httpContextAccessor) : IUserContext
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-
-    public UserContext(IHttpContextAccessor httpContextAccessor)
-    {
-        _httpContextAccessor = httpContextAccessor;
-    }
-
     public Guid? GetCurrentUserId()
     {
         var user = GetCurrentUser();
         var value = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (Guid.TryParse(value, out var userId))
-        {
-            return userId;
-        }
+        if (Guid.TryParse(value, out var userId)) return userId;
 
         return null;
     }
 
     public ClaimsPrincipal? GetCurrentUser()
     {
-        return _httpContextAccessor.HttpContext?.User;
+        return httpContextAccessor.HttpContext?.User;
     }
 
     public bool IsAuthenticated()

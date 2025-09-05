@@ -1,15 +1,14 @@
-using ClaudeCodeProxy.Host.Models;
-using ClaudeCodeProxy.Host.Services;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using System.Text.Json;
 using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Host.Models;
+using ClaudeCodeProxy.Host.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 兑换码相关API端点
+///     兑换码相关API端点
 /// </summary>
 public static class RedeemCodeEndpoints
 {
@@ -68,7 +67,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 使用兑换码
+    ///     使用兑换码
     /// </summary>
     private static async Task<IResult> UseRedeemCode(
         IUserContext userContext,
@@ -76,15 +75,10 @@ public static class RedeemCodeEndpoints
         [FromBody] UseRedeemCodeRequest request)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         if (string.IsNullOrWhiteSpace(request.Code))
-        {
             return Results.BadRequest(new { success = false, message = "兑换码不能为空" });
-        }
 
         try
         {
@@ -98,7 +92,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 获取用户兑换记录
+    ///     获取用户兑换记录
     /// </summary>
     private static async Task<IResult> GetMyRedeemRecords(
         IUserContext userContext,
@@ -107,10 +101,7 @@ public static class RedeemCodeEndpoints
         int pageSize = 20)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
@@ -128,7 +119,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 创建兑换码（管理员）
+    ///     创建兑换码（管理员）
     /// </summary>
     private static async Task<IResult> CreateRedeemCodes(
         IUserContext userContext,
@@ -136,20 +127,12 @@ public static class RedeemCodeEndpoints
         [FromBody] CreateRedeemCodeRequest request)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
-        if (request.Amount <= 0)
-        {
-            return Results.BadRequest(new { success = false, message = "金额必须大于0" });
-        }
+        if (request.Amount <= 0) return Results.BadRequest(new { success = false, message = "金额必须大于0" });
 
         if (request.Count <= 0 || request.Count > 100)
-        {
             return Results.BadRequest(new { success = false, message = "生成数量必须在1-100之间" });
-        }
 
         try
         {
@@ -167,7 +150,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 获取兑换码列表（管理员）
+    ///     获取兑换码列表（管理员）
     /// </summary>
     private static async Task<IResult> GetRedeemCodeList(
         RedeemCodeService redeemCodeService,
@@ -185,7 +168,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 更新兑换码状态（管理员）
+    ///     更新兑换码状态（管理员）
     /// </summary>
     private static async Task<IResult> UpdateRedeemCodeStatus(
         RedeemCodeService redeemCodeService,
@@ -195,25 +178,18 @@ public static class RedeemCodeEndpoints
         try
         {
             // 从请求体中提取isEnabled
-            var requestDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-                System.Text.Json.JsonSerializer.Serialize(requestBody, ThorJsonSerializer.DefaultOptions));
+            var requestDict = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                JsonSerializer.Serialize(requestBody, ThorJsonSerializer.DefaultOptions));
 
             if (!requestDict.TryGetValue("isEnabled", out var isEnabledObj) ||
                 !bool.TryParse(isEnabledObj.ToString(), out var isEnabled))
-            {
                 return Results.BadRequest(new { success = false, message = "无效的请求参数" });
-            }
 
             var success = await redeemCodeService.UpdateRedeemCodeStatusAsync(id, isEnabled);
 
-            if (success)
-            {
-                return Results.Ok(new { success = true, message = $"兑换码已{(isEnabled ? "启用" : "禁用")}" });
-            }
-            else
-            {
-                return Results.NotFound(new { success = false, message = "兑换码不存在" });
-            }
+            if (success) return Results.Ok(new { success = true, message = $"兑换码已{(isEnabled ? "启用" : "禁用")}" });
+
+            return Results.NotFound(new { success = false, message = "兑换码不存在" });
         }
         catch (Exception ex)
         {
@@ -222,7 +198,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 删除兑换码（管理员）
+    ///     删除兑换码（管理员）
     /// </summary>
     private static async Task<IResult> DeleteRedeemCode(
         RedeemCodeService redeemCodeService,
@@ -232,14 +208,9 @@ public static class RedeemCodeEndpoints
         {
             var success = await redeemCodeService.DeleteRedeemCodeAsync(id);
 
-            if (success)
-            {
-                return Results.Ok(new { success = true, message = "兑换码删除成功" });
-            }
-            else
-            {
-                return Results.NotFound(new { success = false, message = "兑换码不存在" });
-            }
+            if (success) return Results.Ok(new { success = true, message = "兑换码删除成功" });
+
+            return Results.NotFound(new { success = false, message = "兑换码不存在" });
         }
         catch (InvalidOperationException ex)
         {
@@ -252,7 +223,7 @@ public static class RedeemCodeEndpoints
     }
 
     /// <summary>
-    /// 获取兑换码统计（管理员）
+    ///     获取兑换码统计（管理员）
     /// </summary>
     private static async Task<IResult> GetRedeemCodeStats(
         RedeemCodeService redeemCodeService)

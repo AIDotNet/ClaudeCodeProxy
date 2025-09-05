@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Thor.Abstractions.Dtos;
 
@@ -12,15 +11,14 @@ public record EmbeddingCreateResponse : ThorBaseResponse
 
     [JsonPropertyName("data")] public List<EmbeddingResponse> Data { get; set; } = [];
 
+    [JsonPropertyName("usage")] public ThorUsageResponse? Usage { get; set; }
+
     /// <summary>
-    /// 类型转换，如果类型是base64,则将float[]转换为base64,如果是空或是float和原始类型一样，则不转换
+    ///     类型转换，如果类型是base64,则将float[]转换为base64,如果是空或是float和原始类型一样，则不转换
     /// </summary>
     public void ConvertEmbeddingData(string? encodingFormat)
     {
-        if (Data.Count == 0)
-        {
-            return;
-        }
+        if (Data.Count == 0) return;
 
         switch (encodingFormat)
         {
@@ -31,12 +29,8 @@ public record EmbeddingCreateResponse : ThorBaseResponse
             case null or "float":
             {
                 foreach (var embeddingResponse in Data)
-                {
                     if (embeddingResponse.Embedding is string base64)
-                    {
                         embeddingResponse.Embedding = Convert.FromBase64String(base64);
-                    }
-                }
 
                 return;
             }
@@ -47,7 +41,6 @@ public record EmbeddingCreateResponse : ThorBaseResponse
             case "base64":
             {
                 foreach (var embeddingResponse in Data)
-                {
                     if (embeddingResponse.Embedding is JsonElement str)
                     {
                         if (str.ValueKind == JsonValueKind.Array)
@@ -61,7 +54,6 @@ public record EmbeddingCreateResponse : ThorBaseResponse
                     {
                         embeddingResponse.Embedding = ConvertFloatArrayToBase64(doubles.ToArray());
                     }
-                }
 
                 break;
             }
@@ -71,7 +63,7 @@ public record EmbeddingCreateResponse : ThorBaseResponse
     public static string ConvertFloatArrayToBase64(double[] floatArray)
     {
         // 将 float[] 转换成 byte[]
-        byte[] byteArray = ArrayPool<byte>.Shared.Rent(floatArray.Length * sizeof(float));
+        var byteArray = ArrayPool<byte>.Shared.Rent(floatArray.Length * sizeof(float));
         try
         {
             Buffer.BlockCopy(floatArray, 0, byteArray, 0, byteArray.Length);
@@ -88,7 +80,7 @@ public record EmbeddingCreateResponse : ThorBaseResponse
     public static string ConvertFloatArrayToBase64(float[] floatArray)
     {
         // 将 float[] 转换成 byte[]
-        byte[] byteArray = ArrayPool<byte>.Shared.Rent(floatArray.Length * sizeof(float));
+        var byteArray = ArrayPool<byte>.Shared.Rent(floatArray.Length * sizeof(float));
         try
         {
             Buffer.BlockCopy(floatArray, 0, byteArray, 0, floatArray.Length);
@@ -101,8 +93,6 @@ public record EmbeddingCreateResponse : ThorBaseResponse
             ArrayPool<byte>.Shared.Return(byteArray);
         }
     }
-
-    [JsonPropertyName("usage")] public ThorUsageResponse? Usage { get; set; }
 }
 
 public record EmbeddingResponse

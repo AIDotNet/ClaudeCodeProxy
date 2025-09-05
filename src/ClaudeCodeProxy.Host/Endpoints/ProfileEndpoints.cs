@@ -1,14 +1,12 @@
+using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 用户个人资料相关API端点
+///     用户个人资料相关API端点
 /// </summary>
 public static class ProfileEndpoints
 {
@@ -38,7 +36,7 @@ public static class ProfileEndpoints
     }
 
     /// <summary>
-    /// 获取个人资料信息
+    ///     获取个人资料信息
     /// </summary>
     private static async Task<IResult> GetProfile(
         IUserContext userContext,
@@ -46,18 +44,12 @@ public static class ProfileEndpoints
         WalletService walletService)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId.HasValue == false)
-        {
-            return Results.Unauthorized();
-        }
+        if (!userId.HasValue) return Results.Unauthorized();
 
         try
         {
             var userInfo = await userService.GetUserByIdAsync(userId.Value);
-            if (userInfo == null)
-            {
-                return Results.NotFound("用户不存在");
-            }
+            if (userInfo == null) return Results.NotFound("用户不存在");
 
             var wallet = await walletService.GetOrCreateWalletAsync(userId.Value);
 
@@ -98,7 +90,7 @@ public static class ProfileEndpoints
     }
 
     /// <summary>
-    /// 更新个人资料
+    ///     更新个人资料
     /// </summary>
     private static async Task<IResult> UpdateProfile(
         IUserContext userContext,
@@ -106,10 +98,7 @@ public static class ProfileEndpoints
         [FromBody] UpdateProfileRequest request)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
@@ -125,20 +114,14 @@ public static class ProfileEndpoints
 
             // 获取当前用户信息以保持现有的角色和状态
             var currentUser = await userService.GetUserByIdAsync(userId.Value);
-            if (currentUser == null)
-            {
-                return Results.NotFound("用户不存在");
-            }
+            if (currentUser == null) return Results.NotFound("用户不存在");
 
             updateRequest.IsActive = currentUser.IsActive;
             updateRequest.EmailConfirmed = currentUser.EmailConfirmed;
             updateRequest.RoleId = currentUser.RoleId;
 
             var updatedUser = await userService.UpdateUserAsync(userId.Value, updateRequest);
-            if (updatedUser == null)
-            {
-                return Results.NotFound("用户不存在");
-            }
+            if (updatedUser == null) return Results.NotFound("用户不存在");
 
             return Results.Ok(new { success = true, message = "个人资料更新成功", user = updatedUser });
         }
@@ -149,7 +132,7 @@ public static class ProfileEndpoints
     }
 
     /// <summary>
-    /// 修改密码
+    ///     修改密码
     /// </summary>
     private static async Task<IResult> ChangePassword(
         IUserContext userContext,
@@ -157,22 +140,14 @@ public static class ProfileEndpoints
         [FromBody] ChangePasswordRequest request)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId.HasValue == false)
-        {
-            return Results.Unauthorized();
-        }
+        if (!userId.HasValue) return Results.Unauthorized();
 
         try
         {
             var success = await userService.ChangePasswordAsync(userId.Value, request);
-            if (success)
-            {
-                return Results.Ok(new { success = true, message = "密码修改成功" });
-            }
-            else
-            {
-                return Results.NotFound(new { success = false, message = "用户不存在" });
-            }
+            if (success) return Results.Ok(new { success = true, message = "密码修改成功" });
+
+            return Results.NotFound(new { success = false, message = "用户不存在" });
         }
         catch (ArgumentException ex)
         {
@@ -185,7 +160,7 @@ public static class ProfileEndpoints
     }
 
     /// <summary>
-    /// 获取个人仪表板信息
+    ///     获取个人仪表板信息
     /// </summary>
     private static async Task<IResult> GetProfileDashboard(
         IUserContext userContext,
@@ -194,10 +169,7 @@ public static class ProfileEndpoints
         ApiKeyService apiKeyService)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {

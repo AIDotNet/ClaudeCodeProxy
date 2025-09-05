@@ -8,49 +8,49 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Making.AspNetCore" Version="1.0.1-preview" />
-        <PackageReference Include="Making.Core" Version="1.0.1-preview" />
-        <PackageReference Include="Making.Jwt" Version="1.0.1-preview" />
-        <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+        <PackageReference Include="Making.AspNetCore" Version="1.0.1-preview"/>
+        <PackageReference Include="Making.Core" Version="1.0.1-preview"/>
+        <PackageReference Include="Making.Jwt" Version="1.0.1-preview"/>
+        <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.6.5" />
-        <PackageReference Include="Serilog" Version="4.3.0" />
-        <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0"/>
+        <PackageReference Include="Scalar.AspNetCore" Version="2.6.5"/>
+        <PackageReference Include="Serilog" Version="4.3.0"/>
+        <PackageReference Include="Serilog.AspNetCore" Version="9.0.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ClaudeCodeProxy.Abstraction\ClaudeCodeProxy.Abstraction.csproj" />
-      <ProjectReference Include="..\ClaudeCodeProxy.Core\ClaudeCodeProxy.Core.csproj" />
-      <ProjectReference Include="..\ClaudeCodeProxy.Domain\ClaudeCodeProxy.Domain.csproj" />
-      <ProjectReference Include="..\Provide\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL.csproj" />
-      <ProjectReference Include="..\Provide\ClaudeCodeProxy.EntityFrameworkCore.Sqlite\ClaudeCodeProxy.EntityFrameworkCore.Sqlite.csproj" />
+        <ProjectReference Include="..\ClaudeCodeProxy.Abstraction\ClaudeCodeProxy.Abstraction.csproj"/>
+        <ProjectReference Include="..\ClaudeCodeProxy.Core\ClaudeCodeProxy.Core.csproj"/>
+        <ProjectReference Include="..\ClaudeCodeProxy.Domain\ClaudeCodeProxy.Domain.csproj"/>
+        <ProjectReference Include="..\Provide\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL\ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL.csproj"/>
+        <ProjectReference Include="..\Provide\ClaudeCodeProxy.EntityFrameworkCore.Sqlite\ClaudeCodeProxy.EntityFrameworkCore.Sqlite.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Extensions\" />
+        <Folder Include="Extensions\"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="..\..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
+        <Content Include="..\..\.dockerignore">
+            <Link>.dockerignore</Link>
+        </Content>
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="*.bat">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <None Update="*.bat">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

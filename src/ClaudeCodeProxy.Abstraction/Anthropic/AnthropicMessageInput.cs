@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Thor.Abstractions.Anthropic;
 
 namespace ClaudeCodeProxy.Abstraction.Anthropic;
 
@@ -41,5 +40,9 @@ public class AnthropicMessageInput
         }
     }
 
-    [JsonPropertyName("cache_control")] public AnthropicCacheControl? CacheControl { get; set; }
+    [JsonPropertyName("cache_control")] public AnthropicCacheControls? CacheControl { get; set; }
+
+    [JsonPropertyName("signature")] public string? Signature { get; set; }
+
+    [JsonPropertyName("thinking")] public string? Thinking { get; set; }
 }

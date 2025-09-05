@@ -8,7 +8,7 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite;
 public static class ServiceExtensions
 {
     /// <summary>
-    /// Adds Entity Framework Core with SQLite support to the service collection.
+    ///     Adds Entity Framework Core with SQLite support to the service collection.
     /// </summary>
     /// <param name="services"></param>
     /// <param name="configuration"></param>
@@ -17,7 +17,7 @@ public static class ServiceExtensions
         IConfiguration configuration)
     {
         // Register the DbContext with SQLite provider
-        services.AddDbContext<IContext,SqliteDbContext>(options =>
+        services.AddDbContext<IContext, SqliteDbContext>(options =>
             options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
 
         return services;

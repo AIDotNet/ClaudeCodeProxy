@@ -1,11 +1,10 @@
-using System.Security.Claims;
-using ClaudeCodeProxy.Host.Services;
 using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Host.Services;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 请求日志相关API端点
+///     请求日志相关API端点
 /// </summary>
 public static class RequestLogEndpoints
 {
@@ -50,7 +49,7 @@ public static class RequestLogEndpoints
     }
 
     /// <summary>
-    /// 获取当前用户请求日志
+    ///     获取当前用户请求日志
     /// </summary>
     private static async Task<IResult> GetUserRequestLogs(
         IUserContext userContext,
@@ -63,10 +62,7 @@ public static class RequestLogEndpoints
         DateTime? endDate = null)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
@@ -81,7 +77,7 @@ public static class RequestLogEndpoints
     }
 
     /// <summary>
-    /// 获取当前用户请求统计
+    ///     获取当前用户请求统计
     /// </summary>
     private static async Task<IResult> GetUserRequestStatistics(
         IUserContext userContext,
@@ -90,10 +86,7 @@ public static class RequestLogEndpoints
         DateTime? endDate = null)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
@@ -107,7 +100,7 @@ public static class RequestLogEndpoints
     }
 
     /// <summary>
-    /// 管理员获取所有请求日志
+    ///     管理员获取所有请求日志
     /// </summary>
     private static async Task<IResult> GetAllRequestLogs(
         RequestLogService requestLogService,
@@ -132,7 +125,7 @@ public static class RequestLogEndpoints
     }
 
     /// <summary>
-    /// 管理员获取指定用户请求日志
+    ///     管理员获取指定用户请求日志
     /// </summary>
     private static async Task<IResult> GetUserRequestLogsByAdmin(
         Guid userId,
@@ -157,7 +150,7 @@ public static class RequestLogEndpoints
     }
 
     /// <summary>
-    /// 管理员获取指定用户请求统计
+    ///     管理员获取指定用户请求统计
     /// </summary>
     private static async Task<IResult> GetUserRequestStatisticsByAdmin(
         Guid userId,

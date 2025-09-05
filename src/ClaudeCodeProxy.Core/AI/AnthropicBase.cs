@@ -1,174 +1,174 @@
-﻿using Thor.Abstractions.Anthropic;
+﻿using ClaudeCodeProxy.Abstraction.Anthropic;
 
 namespace ClaudeCodeProxy.Core.AI;
 
 public abstract class AnthropicBase
 {
     /// <summary>
-    /// 创建content_block_start事件
+    ///     创建content_block_start事件
     /// </summary>
-    protected ClaudeStreamDto CreateContentBlockStartEvent()
+    protected AnthropicStreamDto CreateContentBlockStartEvent()
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_start",
-            index = 0,
-            content_block = new ClaudeChatCompletionDtoContent_block
+            Type = "content_block_start",
+            Index = 0,
+            ContentBlock = new AnthropicChatCompletionDtoContentBlock
             {
-                type = "text",
-                id = null,
-                name = null
+                Type = "text",
+                Id = null,
+                Name = null
             }
         };
     }
 
     /// <summary>
-    /// 创建thinking block start事件
+    ///     创建thinking block start事件
     /// </summary>
-    protected  ClaudeStreamDto CreateThinkingBlockStartEvent()
+    protected AnthropicStreamDto CreateThinkingBlockStartEvent()
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_start",
-            index = 0,
-            content_block = new ClaudeChatCompletionDtoContent_block
+            Type = "content_block_start",
+            Index = 0,
+            ContentBlock = new AnthropicChatCompletionDtoContentBlock
             {
-                type = "thinking",
-                id = null,
-                name = null
+                Type = "thinking",
+                Id = null,
+                Name = null
             }
         };
     }
 
     /// <summary>
-    /// 创建content_block_delta事件
+    ///     创建content_block_delta事件
     /// </summary>
-    protected  ClaudeStreamDto CreateContentBlockDeltaEvent(string text)
+    protected AnthropicStreamDto CreateContentBlockDeltaEvent(string text)
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_delta",
-            index = 0,
-            delta = new ClaudeChatCompletionDtoDelta
+            Type = "content_block_delta",
+            Index = 0,
+            Delta = new AnthropicChatCompletionDtoDelta
             {
-                type = "text_delta",
-                text = text
+                Type = "text_delta",
+                Text = text
             }
         };
     }
 
     /// <summary>
-    /// 创建thinking delta事件
+    ///     创建thinking delta事件
     /// </summary>
-    protected  ClaudeStreamDto CreateThinkingBlockDeltaEvent(string thinking)
+    protected AnthropicStreamDto CreateThinkingBlockDeltaEvent(string thinking)
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_delta",
-            index = 0,
-            delta = new ClaudeChatCompletionDtoDelta
+            Type = "content_block_delta",
+            Index = 0,
+            Delta = new AnthropicChatCompletionDtoDelta
             {
-                type = "thinking",
-                thinking = thinking
+                Type = "thinking",
+                Thinking = thinking
             }
         };
     }
 
     /// <summary>
-    /// 创建content_block_stop事件
+    ///     创建content_block_stop事件
     /// </summary>
-    protected  ClaudeStreamDto CreateContentBlockStopEvent()
+    protected AnthropicStreamDto CreateContentBlockStopEvent()
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_stop",
-            index = 0
+            Type = "content_block_stop",
+            Index = 0
         };
     }
 
     /// <summary>
-    /// 创建message_delta事件
+    ///     创建message_delta事件
     /// </summary>
-    protected  ClaudeStreamDto CreateMessageDeltaEvent(string finishReason, ClaudeChatCompletionDtoUsage usage)
+    protected AnthropicStreamDto CreateMessageDeltaEvent(string finishReason, AnthropicCompletionDtoUsage usage)
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "message_delta",
+            Type = "message_delta",
             Usage = usage,
-            delta = new ClaudeChatCompletionDtoDelta
+            Delta = new AnthropicChatCompletionDtoDelta
             {
-                stop_reason = finishReason
+                StopReason = finishReason
             }
         };
     }
 
     /// <summary>
-    /// 创建message_stop事件
+    ///     创建message_stop事件
     /// </summary>
-    protected  ClaudeStreamDto CreateMessageStopEvent()
+    protected AnthropicStreamDto CreateMessageStopEvent()
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "message_stop"
+            Type = "message_stop"
         };
     }
 
     /// <summary>
-    /// 创建tool block start事件
+    ///     创建tool block start事件
     /// </summary>
-    protected  ClaudeStreamDto CreateToolBlockStartEvent(string? toolId, string? toolName)
+    protected AnthropicStreamDto CreateToolBlockStartEvent(string? toolId, string? toolName)
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_start",
-            index = 0,
-            content_block = new ClaudeChatCompletionDtoContent_block
+            Type = "content_block_start",
+            Index = 0,
+            ContentBlock = new AnthropicChatCompletionDtoContentBlock
             {
-                type = "tool_use",
-                id = toolId,
-                name = toolName
+                Type = "tool_use",
+                Id = toolId,
+                Name = toolName
             }
         };
     }
 
     /// <summary>
-    /// 创建tool delta事件
+    ///     创建tool delta事件
     /// </summary>
-    protected  ClaudeStreamDto CreateToolBlockDeltaEvent(string partialJson)
+    protected AnthropicStreamDto CreateToolBlockDeltaEvent(string partialJson)
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "content_block_delta",
-            index = 0,
-            delta = new ClaudeChatCompletionDtoDelta
+            Type = "content_block_delta",
+            Index = 0,
+            Delta = new AnthropicChatCompletionDtoDelta
             {
-                type = "input_json_delta",
-                partial_json = partialJson
+                Type = "input_json_delta",
+                PartialJson = partialJson
             }
         };
     }
 
     /// <summary>
-    /// 创建message_start事件
+    ///     创建message_start事件
     /// </summary>
-    protected ClaudeStreamDto CreateMessageStartEvent(string messageId, string model)
+    protected AnthropicStreamDto CreateMessageStartEvent(string messageId, string model)
     {
-        return new ClaudeStreamDto
+        return new AnthropicStreamDto
         {
-            type = "message_start",
-            message = new ClaudeChatCompletionDto
+            Type = "message_start",
+            Message = new AnthropicChatCompletionDto
             {
                 id = messageId,
                 type = "message",
                 role = "assistant",
                 model = model,
-                content = new ClaudeChatCompletionDtoContent[0],
-                Usage = new ClaudeChatCompletionDtoUsage
+                content = new AnthropicChatCompletionDtoContent[0],
+                Usage = new AnthropicCompletionDtoUsage
                 {
-                    input_tokens = 0,
-                    output_tokens = 0,
-                    cache_creation_input_tokens = 0,
-                    cache_read_input_tokens = 0
+                    InputTokens = 0,
+                    OutputTokens = 0,
+                    CacheCreationInputTokens = 0,
+                    CacheReadInputTokens = 0
                 }
             }
         };

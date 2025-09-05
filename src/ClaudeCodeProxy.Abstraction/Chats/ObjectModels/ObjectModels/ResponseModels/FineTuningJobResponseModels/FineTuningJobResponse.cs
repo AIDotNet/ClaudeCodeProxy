@@ -4,7 +4,8 @@ using Thor.Abstractions.ObjectModels.ObjectModels.SharedModels;
 
 namespace Thor.Abstractions.ObjectModels.ObjectModels.ResponseModels.FineTuningJobResponseModels;
 
-public record FineTuningJobResponse : ThorBaseResponse, IOpenAiModels.IId, IOpenAiModels.IModel, IOpenAiModels.ICreatedAt
+public record FineTuningJobResponse : ThorBaseResponse, IOpenAiModels.IId, IOpenAiModels.IModel,
+    IOpenAiModels.ICreatedAt
 {
     /// <summary>
     ///     The Unix timestamp (in seconds) for when the fine-tuning job was finished. The value will be null if the
@@ -89,7 +90,7 @@ public record FineTuningJobResponse : ThorBaseResponse, IOpenAiModels.IId, IOpen
         ///     The number of epochs to train the model for. An epoch refers to one full cycle through the training dataset.
         ///     "Auto" decides the optimal number of epochs based on the size of the dataset. If setting the number manually, we
         ///     support any number between 1 and 50 epochs.
-        ///     "Auto" == -1 
+        ///     "Auto" == -1
         /// </summary>
         [JsonPropertyName("n_epochs")]
         [JsonConverter(typeof(NEpochsConverter))]

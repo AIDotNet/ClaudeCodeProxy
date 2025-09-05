@@ -3,7 +3,7 @@ using ClaudeCodeProxy.Domain;
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 生成OpenAI OAuth授权URL请求模型
+///     生成OpenAI OAuth授权URL请求模型
 /// </summary>
 public record GenerateOpenAiOAuthUrlRequest(
     string? ClientId = null,
@@ -12,7 +12,7 @@ public record GenerateOpenAiOAuthUrlRequest(
 );
 
 /// <summary>
-/// 处理OpenAI OAuth授权码请求模型
+///     处理OpenAI OAuth授权码请求模型
 /// </summary>
 public record ExchangeOpenAiOAuthCodeRequest(
     string AuthorizationCode,

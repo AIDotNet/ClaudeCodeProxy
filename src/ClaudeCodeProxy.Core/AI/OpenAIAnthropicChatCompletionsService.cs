@@ -5,20 +5,19 @@ using ClaudeCodeProxy.Abstraction.Anthropic;
 using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
 using Thor.Abstractions;
-using Thor.Abstractions.Anthropic;
 using Thor.Abstractions.Chats;
 using Thor.Abstractions.Chats.Dtos;
 
 namespace ClaudeCodeProxy.Core.AI;
 
 /// <summary>
-/// OpenAI到Claude适配器服务
-/// 将Claude格式的请求转换为OpenAI格式，然后将OpenAI的响应转换为Claude格式
+///     OpenAI到Claude适配器服务
+///     将Claude格式的请求转换为OpenAI格式，然后将OpenAI的响应转换为Claude格式
 /// </summary>
 public class OpenAIAnthropicChatCompletionsService : AnthropicBase
 {
-    private readonly IThorChatCompletionsService _openAIChatService;
     private readonly ILogger<OpenAIAnthropicChatCompletionsService> _logger;
+    private readonly IThorChatCompletionsService _openAIChatService;
 
     public OpenAIAnthropicChatCompletionsService(
         IThorChatCompletionsService openAIChatService,
@@ -29,9 +28,9 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     }
 
     /// <summary>
-    /// 非流式对话补全
+    ///     非流式对话补全
     /// </summary>
-    public async Task<ClaudeChatCompletionDto> ChatCompletionsAsync(AnthropicInput input,
+    public async Task<AnthropicChatCompletionDto> ChatCompletionsAsync(AnthropicInput input,
         Dictionary<string, string> headers,
         ProxyConfig? config,
         ThorPlatformOptions? options = null,
@@ -60,9 +59,9 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     }
 
     /// <summary>
-    /// 流式对话补全
+    ///     流式对话补全
     /// </summary>
-    public async IAsyncEnumerable<(string?, string?, ClaudeStreamDto?)> StreamChatCompletionsAsync(AnthropicInput input,
+    public async IAsyncEnumerable<(string?, string?, AnthropicStreamDto?)> StreamChatCompletionsAsync(AnthropicInput input,
         Dictionary<string, string> headers,
         ProxyConfig? config,
         ThorPlatformOptions? options = null,
@@ -78,7 +77,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         var toolBlocksStarted = new Dictionary<int, bool>(); // 使用索引而不是ID
         var toolCallIds = new Dictionary<int, string>(); // 存储每个索引对应的ID
         var toolCallIndexToBlockIndex = new Dictionary<int, int>(); // 工具调用索引到块索引的映射
-        var accumulatedUsage = new ClaudeChatCompletionDtoUsage();
+        var accumulatedUsage = new AnthropicCompletionDtoUsage();
         var isFinished = false;
         var currentContentBlockType = ""; // 跟踪当前内容块类型
         var currentBlockIndex = 0; // 跟踪当前块索引
@@ -89,7 +88,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         {
             // 发送message_start事件
             if (!hasStarted && openAiResponse.Choices?.Count > 0 &&
-                openAiResponse.Choices.Any(x => x.Delta.ToolCalls?.Count > 0) == false)
+                !openAiResponse.Choices.Any(x => x.Delta.ToolCalls?.Count > 0))
             {
                 hasStarted = true;
                 var messageStartEvent = CreateMessageStartEvent(messageId, input.Model);
@@ -102,25 +101,19 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             {
                 // 使用最新的token计数（OpenAI通常在最后的响应中提供完整的统计）
                 if (openAiResponse.Usage.PromptTokens.HasValue)
-                {
-                    accumulatedUsage.input_tokens = openAiResponse.Usage.PromptTokens.Value;
-                }
+                    accumulatedUsage.InputTokens = openAiResponse.Usage.PromptTokens.Value;
 
                 if (openAiResponse.Usage.CompletionTokens.HasValue)
-                {
-                    accumulatedUsage.output_tokens = (int)openAiResponse.Usage.CompletionTokens.Value;
-                }
+                    accumulatedUsage.OutputTokens = (int)openAiResponse.Usage.CompletionTokens.Value;
 
                 if (openAiResponse.Usage.PromptTokensDetails?.CachedTokens.HasValue == true)
-                {
-                    accumulatedUsage.cache_read_input_tokens =
+                    accumulatedUsage.CacheReadInputTokens =
                         openAiResponse.Usage.PromptTokensDetails.CachedTokens.Value;
-                }
 
                 // 记录调试信息
                 _logger.LogDebug("OpenAI Usage更新: Input={InputTokens}, Output={OutputTokens}, CacheRead={CacheRead}",
-                    accumulatedUsage.input_tokens, accumulatedUsage.output_tokens,
-                    accumulatedUsage.cache_read_input_tokens);
+                    accumulatedUsage.InputTokens, accumulatedUsage.OutputTokens,
+                    accumulatedUsage.CacheReadInputTokens);
             }
 
             if (openAiResponse.Choices is { Count: > 0 })
@@ -134,7 +127,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     if (currentContentBlockType != "text" && !string.IsNullOrEmpty(currentContentBlockType))
                     {
                         var stopEvent = CreateContentBlockStopEvent();
-                        stopEvent.index = currentBlockIndex;
+                        stopEvent.Index = currentBlockIndex;
                         yield return ("content_block_stop",
                             JsonSerializer.Serialize(stopEvent, ThorJsonSerializer.DefaultOptions), stopEvent);
                         currentBlockIndex++; // 切换内容块时增加索引
@@ -148,7 +141,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                         currentContentBlockType = "text";
                         lastContentBlockType = "text";
                         var contentBlockStartEvent = CreateContentBlockStartEvent();
-                        contentBlockStartEvent.index = currentBlockIndex;
+                        contentBlockStartEvent.Index = currentBlockIndex;
                         yield return ("content_block_start",
                             JsonSerializer.Serialize(contentBlockStartEvent, ThorJsonSerializer.DefaultOptions),
                             contentBlockStartEvent);
@@ -156,7 +149,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
 
                     // 发送content_block_delta事件
                     var contentDeltaEvent = CreateContentBlockDeltaEvent(choice.Delta.Content);
-                    contentDeltaEvent.index = currentBlockIndex;
+                    contentDeltaEvent.Index = currentBlockIndex;
                     yield return ("content_block_delta",
                         JsonSerializer.Serialize(contentDeltaEvent, ThorJsonSerializer.DefaultOptions),
                         contentDeltaEvent);
@@ -164,7 +157,6 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
 
                 // 处理工具调用
                 if (choice.Delta?.ToolCalls is { Count: > 0 })
-                {
                     foreach (var toolCall in choice.Delta.ToolCalls)
                     {
                         var toolCallIndex = toolCall.Index; // 使用索引来标识工具调用
@@ -176,7 +168,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                             if (currentContentBlockType == "text" || currentContentBlockType == "thinking")
                             {
                                 var stopEvent = CreateContentBlockStopEvent();
-                                stopEvent.index = currentBlockIndex;
+                                stopEvent.Index = currentBlockIndex;
                                 yield return ("content_block_stop",
                                     JsonSerializer.Serialize(stopEvent, ThorJsonSerializer.DefaultOptions), stopEvent);
                                 currentBlockIndex++; // 增加块索引
@@ -185,7 +177,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                             else if (currentContentBlockType == "tool_use")
                             {
                                 var stopEvent = CreateContentBlockStopEvent();
-                                stopEvent.index = currentBlockIndex;
+                                stopEvent.Index = currentBlockIndex;
                                 yield return ("content_block_stop",
                                     JsonSerializer.Serialize(stopEvent, ThorJsonSerializer.DefaultOptions), stopEvent);
                                 currentBlockIndex++; // 增加块索引
@@ -199,19 +191,15 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
 
                             // 保存工具调用的ID（如果有的话）
                             if (!string.IsNullOrEmpty(toolCall.Id))
-                            {
                                 toolCallIds[toolCallIndex] = toolCall.Id;
-                            }
                             else if (!toolCallIds.ContainsKey(toolCallIndex))
-                            {
                                 // 如果没有ID且之前也没有保存过，生成一个新的ID
                                 toolCallIds[toolCallIndex] = Guid.NewGuid().ToString();
-                            }
 
                             var toolBlockStartEvent = CreateToolBlockStartEvent(
                                 toolCallIds[toolCallIndex],
                                 toolCall.Function?.Name);
-                            toolBlockStartEvent.index = currentBlockIndex;
+                            toolBlockStartEvent.Index = currentBlockIndex;
                             yield return ("content_block_start",
                                 JsonSerializer.Serialize(toolBlockStartEvent, ThorJsonSerializer.DefaultOptions),
                                 toolBlockStartEvent);
@@ -222,13 +210,12 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                         {
                             var toolDeltaEvent = CreateToolBlockDeltaEvent(toolCall.Function.Arguments);
                             // 使用该工具调用对应的块索引
-                            toolDeltaEvent.index = toolCallIndexToBlockIndex[toolCallIndex];
+                            toolDeltaEvent.Index = toolCallIndexToBlockIndex[toolCallIndex];
                             yield return ("content_block_delta",
                                 JsonSerializer.Serialize(toolDeltaEvent, ThorJsonSerializer.DefaultOptions),
                                 toolDeltaEvent);
                         }
                     }
-                }
 
                 // 处理推理内容
                 if (!string.IsNullOrEmpty(choice.Delta?.ReasoningContent))
@@ -237,7 +224,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     if (currentContentBlockType != "thinking" && !string.IsNullOrEmpty(currentContentBlockType))
                     {
                         var stopEvent = CreateContentBlockStopEvent();
-                        stopEvent.index = currentBlockIndex;
+                        stopEvent.Index = currentBlockIndex;
                         yield return ("content_block_stop",
                             JsonSerializer.Serialize(stopEvent, ThorJsonSerializer.DefaultOptions), stopEvent);
                         currentBlockIndex++; // 增加块索引
@@ -251,14 +238,14 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                         currentContentBlockType = "thinking";
                         lastContentBlockType = "thinking";
                         var thinkingBlockStartEvent = CreateThinkingBlockStartEvent();
-                        thinkingBlockStartEvent.index = currentBlockIndex;
+                        thinkingBlockStartEvent.Index = currentBlockIndex;
                         yield return ("content_block_start",
                             JsonSerializer.Serialize(thinkingBlockStartEvent, ThorJsonSerializer.DefaultOptions),
                             thinkingBlockStartEvent);
                     }
 
                     var thinkingDeltaEvent = CreateThinkingBlockDeltaEvent(choice.Delta.ReasoningContent);
-                    thinkingDeltaEvent.index = currentBlockIndex;
+                    thinkingDeltaEvent.Index = currentBlockIndex;
                     yield return ("content_block_delta",
                         JsonSerializer.Serialize(thinkingDeltaEvent, ThorJsonSerializer.DefaultOptions),
                         thinkingDeltaEvent);
@@ -273,7 +260,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     if (!string.IsNullOrEmpty(currentContentBlockType))
                     {
                         var contentBlockStopEvent = CreateContentBlockStopEvent();
-                        contentBlockStopEvent.index = currentBlockIndex;
+                        contentBlockStopEvent.Index = currentBlockIndex;
                         yield return ("content_block_stop",
                             JsonSerializer.Serialize(contentBlockStopEvent, ThorJsonSerializer.DefaultOptions),
                             contentBlockStopEvent);
@@ -286,8 +273,8 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     // 记录最终Usage统计
                     _logger.LogDebug(
                         "流式响应结束，最终Usage: Input={InputTokens}, Output={OutputTokens}, CacheRead={CacheRead}",
-                        accumulatedUsage.input_tokens, accumulatedUsage.output_tokens,
-                        accumulatedUsage.cache_read_input_tokens);
+                        accumulatedUsage.InputTokens, accumulatedUsage.OutputTokens,
+                        accumulatedUsage.CacheReadInputTokens);
 
                     yield return ("message_delta",
                         JsonSerializer.Serialize(messageDeltaEvent, ThorJsonSerializer.DefaultOptions),
@@ -308,7 +295,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             if (!string.IsNullOrEmpty(currentContentBlockType))
             {
                 var contentBlockStopEvent = CreateContentBlockStopEvent();
-                contentBlockStopEvent.index = currentBlockIndex;
+                contentBlockStopEvent.Index = currentBlockIndex;
                 yield return ("content_block_stop",
                     JsonSerializer.Serialize(contentBlockStopEvent, ThorJsonSerializer.DefaultOptions),
                     contentBlockStopEvent);
@@ -327,7 +314,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     }
 
     /// <summary>
-    /// 将AnthropicInput转换为ThorChatCompletionsRequest
+    ///     将AnthropicInput转换为ThorChatCompletionsRequest
     /// </summary>
     private ThorChatCompletionsRequest ConvertAnthropicToOpenAI(AnthropicInput anthropicInput)
     {
@@ -342,26 +329,20 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         if (anthropicInput.Thinking != null &&
             anthropicInput.Thinking.Type.Equals("enabled", StringComparison.OrdinalIgnoreCase))
         {
-            openAiRequest.Thinking = new ThorChatClaudeThinking()
+            openAiRequest.Thinking = new ThorChatClaudeThinking
             {
                 BudgetToken = anthropicInput.Thinking.BudgetTokens,
-                Type = "enabled",
+                Type = "enabled"
             };
             openAiRequest.EnableThinking = true;
         }
 
         if (!string.IsNullOrEmpty(anthropicInput.System))
-        {
             openAiRequest.Messages.Add(ThorChatMessage.CreateSystemMessage(anthropicInput.System));
-        }
 
         if (anthropicInput.Systems?.Count > 0)
-        {
             foreach (var systemContent in anthropicInput.Systems)
-            {
                 openAiRequest.Messages.Add(ThorChatMessage.CreateSystemMessage(systemContent.Text ?? string.Empty));
-            }
-        }
 
 
         // 处理messages
@@ -371,10 +352,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             {
                 var thorMessages = ConvertAnthropicMessageToThor(message);
                 // 需要过滤 空消息
-                if (thorMessages.Count == 0)
-                {
-                    continue;
-                }
+                if (thorMessages.Count == 0) continue;
 
                 openAiRequest.Messages.AddRange(thorMessages);
             }
@@ -387,21 +365,17 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
 
         // 处理tools
         if (anthropicInput.Tools is { Count: > 0 })
-        {
             openAiRequest.Tools = anthropicInput.Tools.Select(ConvertAnthropicToolToThor).ToList();
-        }
 
         // 处理tool_choice
         if (anthropicInput.ToolChoice != null)
-        {
             openAiRequest.ToolChoice = ConvertAnthropicToolChoiceToThor(anthropicInput.ToolChoice);
-        }
 
         return openAiRequest;
     }
 
     /// <summary>
-    /// 转换Anthropic消息为Thor消息列表
+    ///     转换Anthropic消息为Thor消息列表
     /// </summary>
     private static List<ThorChatMessage> ConvertAnthropicMessageToThor(AnthropicMessageInput anthropicMessage)
     {
@@ -426,7 +400,6 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             var currentToolCalls = new List<ThorToolCall>();
 
             foreach (var content in anthropicMessage.Contents)
-            {
                 if (content.Type == "text")
                 {
                     currentContents.Add(ThorChatMessageContent.CreateTextContent(content.Text ?? string.Empty));
@@ -516,7 +489,6 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     };
                     results.Add(toolMessage);
                 }
-            }
 
             // 处理剩余的内容
             if (currentContents.Count > 0)
@@ -543,19 +515,16 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
 
         // 如果没有任何内容，返回一个空的消息
         if (results.Count == 0)
-        {
             results.Add(new ThorChatMessage
             {
                 Role = anthropicMessage.Role,
                 Content = string.Empty
             });
-        }
 
         // 如果只有一个text则使用content字段
         if (results is [{ Contents.Count: 1 }] &&
             results.FirstOrDefault()?.Contents?.FirstOrDefault()?.Type == "text" &&
             !string.IsNullOrEmpty(results.FirstOrDefault()?.Contents?.FirstOrDefault()?.Text))
-        {
             return
             [
                 new ThorChatMessage
@@ -564,13 +533,12 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
                     Content = results.FirstOrDefault()?.Contents?.FirstOrDefault()?.Text ?? string.Empty
                 }
             ];
-        }
 
         return results;
     }
 
     /// <summary>
-    /// 转换Anthropic工具为Thor工具
+    ///     转换Anthropic工具为Thor工具
     /// </summary>
     private ThorToolDefinition ConvertAnthropicToolToThor(AnthropicMessageTool anthropicTool)
     {
@@ -578,28 +546,22 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
             new Dictionary<string, ThorToolFunctionPropertyDefinition>();
 
         if (anthropicTool.InputSchema?.Properties != null)
-        {
             foreach (var property in anthropicTool.InputSchema.Properties)
-            {
                 if (property.Value?.description != null)
                 {
-                    var definitionType = new ThorToolFunctionPropertyDefinition()
+                    var definitionType = new ThorToolFunctionPropertyDefinition
                     {
                         Description = property.Value.description,
                         Type = property.Value.type
                     };
                     if (property.Value?.items?.type != null)
-                    {
-                        definitionType.Items = new ThorToolFunctionPropertyDefinition()
+                        definitionType.Items = new ThorToolFunctionPropertyDefinition
                         {
                             Type = property.Value.items.type
                         };
-                    }
 
                     values.Add(property.Key, definitionType);
                 }
-            }
-        }
 
 
         return new ThorToolDefinition
@@ -620,7 +582,7 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     }
 
     /// <summary>
-    /// 转换Anthropic工具选择为Thor工具选择
+    ///     转换Anthropic工具选择为Thor工具选择
     /// </summary>
     private ThorToolChoice ConvertAnthropicToolChoiceToThor(AnthropicTooChoiceInput anthropicToolChoice)
     {
@@ -634,12 +596,12 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     }
 
     /// <summary>
-    /// 将OpenAI响应转换为Claude响应格式
+    ///     将OpenAI响应转换为Claude响应格式
     /// </summary>
-    private ClaudeChatCompletionDto ConvertOpenAIToClaude(ThorChatCompletionsResponse openAIResponse,
+    private AnthropicChatCompletionDto ConvertOpenAIToClaude(ThorChatCompletionsResponse openAIResponse,
         AnthropicInput originalRequest)
     {
-        var claudeResponse = new ClaudeChatCompletionDto
+        var claudeResponse = new AnthropicChatCompletionDto
         {
             id = openAIResponse.Id,
             type = "message",
@@ -653,80 +615,72 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
         if (openAIResponse.Choices is { Count: > 0 })
         {
             var choice = openAIResponse.Choices.First();
-            var contents = new List<ClaudeChatCompletionDtoContent>();
+            var contents = new List<AnthropicChatCompletionDtoContent>();
 
             if (!string.IsNullOrEmpty(choice.Message.Content) && !string.IsNullOrEmpty(choice.Message.ReasoningContent))
             {
-                contents.Add(new ClaudeChatCompletionDtoContent
+                contents.Add(new AnthropicChatCompletionDtoContent
                 {
                     type = "thinking",
                     Thinking = choice.Message.ReasoningContent
                 });
 
-                contents.Add(new ClaudeChatCompletionDtoContent
+                contents.Add(new AnthropicChatCompletionDtoContent
                 {
                     type = "text",
                     text = choice.Message.Content
                 });
-                
-                
             }
             else
             {
                 // 处理思维内容
                 if (!string.IsNullOrEmpty(choice.Message.ReasoningContent))
-                {
-                    contents.Add(new ClaudeChatCompletionDtoContent
+                    contents.Add(new AnthropicChatCompletionDtoContent
                     {
                         type = "thinking",
                         Thinking = choice.Message.ReasoningContent
                     });
-                }
 
                 // 处理文本内容
                 if (!string.IsNullOrEmpty(choice.Message.Content))
-                {
-                    contents.Add(new ClaudeChatCompletionDtoContent
+                    contents.Add(new AnthropicChatCompletionDtoContent
                     {
                         type = "text",
                         text = choice.Message.Content
                     });
-                }
             }
 
             // 处理工具调用
             if (choice.Message.ToolCalls is { Count: > 0 })
-            {
-                contents.AddRange(choice.Message.ToolCalls.Select(toolCall => new ClaudeChatCompletionDtoContent
+                contents.AddRange(choice.Message.ToolCalls.Select(toolCall => new AnthropicChatCompletionDtoContent
                 {
                     type = "tool_use", id = toolCall.Id, name = toolCall.Function?.Name,
                     input = JsonSerializer.Deserialize<object>(toolCall.Function?.Arguments ?? "{}")
                 }));
-            }
 
             claudeResponse.content = contents.ToArray();
         }
 
         // 处理使用情况统计 - 确保始终提供Usage信息
-        claudeResponse.Usage = new ClaudeChatCompletionDtoUsage
+        claudeResponse.Usage = new AnthropicCompletionDtoUsage
         {
-            input_tokens = openAIResponse.Usage?.PromptTokens ?? 0,
-            output_tokens = (int?)(openAIResponse.Usage?.CompletionTokens ?? 0),
-            cache_creation_input_tokens = openAIResponse.Usage?.PromptTokensDetails?.CachedTokens ?? 0,
-            cache_read_input_tokens = openAIResponse.Usage?.PromptTokensDetails?.CachedTokens ?? 0
+            InputTokens = openAIResponse.Usage?.PromptTokens ?? 0,
+            OutputTokens = (int?)(openAIResponse.Usage?.CompletionTokens ?? 0),
+            CacheCreationInputTokens = openAIResponse.Usage?.PromptTokensDetails?.CachedTokens ?? 0,
+            CacheReadInputTokens = openAIResponse.Usage?.PromptTokensDetails?.CachedTokens ?? 0
         };
 
         // 记录Usage统计日志
         _logger.LogDebug("非流式响应Usage: Input={InputTokens}, Output={OutputTokens}, CacheRead={CacheRead}",
-            claudeResponse.Usage.input_tokens, claudeResponse.Usage.output_tokens,
-            claudeResponse.Usage.cache_read_input_tokens);
+            claudeResponse.Usage.InputTokens, claudeResponse.Usage.OutputTokens,
+            claudeResponse.Usage.CacheReadInputTokens);
 
         return claudeResponse;
     }
 
 
     /// <summary>
-    /// 将OpenAI的完成原因转换为Claude的停止原因
+    ///     将OpenAI的完成原因转换为Claude的停止原因
     /// </summary>
     private string GetClaudeStopReason(string? openAiFinishReason)
     {
@@ -741,15 +695,12 @@ public class OpenAIAnthropicChatCompletionsService : AnthropicBase
     }
 
     /// <summary>
-    /// 根据最后的内容块类型和OpenAI的完成原因确定Claude的停止原因
+    ///     根据最后的内容块类型和OpenAI的完成原因确定Claude的停止原因
     /// </summary>
     private string GetStopReasonByLastContentType(string? openAiFinishReason, string lastContentBlockType)
     {
         // 如果最后一个内容块是工具调用，优先返回tool_use
-        if (lastContentBlockType == "tool_use")
-        {
-            return "tool_use";
-        }
+        if (lastContentBlockType == "tool_use") return "tool_use";
 
         // 否则使用标准的转换逻辑
         return GetClaudeStopReason(openAiFinishReason);

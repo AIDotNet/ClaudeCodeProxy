@@ -9,7 +9,7 @@ namespace Thor.Abstractions.ObjectModels.ObjectModels.RequestModels;
 /// <summary>
 ///     Create Edit Request Model
 /// </summary>
-public record EditCreateRequest :  IOpenAiModels.ITemperature, IOpenAiModels.IModel
+public record EditCreateRequest : IOpenAiModels.ITemperature, IOpenAiModels.IModel
 {
     /// <summary>
     ///     The input text to use as a starting point for the edit.
@@ -44,11 +44,6 @@ public record EditCreateRequest :  IOpenAiModels.ITemperature, IOpenAiModels.IMo
 
     [JsonPropertyName("model")] public string? Model { get; set; }
 
-    public IEnumerable<ValidationResult> Validate()
-    {
-        throw new NotImplementedException();
-    }
-
     /// <summary>
     ///     What
     ///     <a href="https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277">sampling temperature</a>
@@ -59,4 +54,9 @@ public record EditCreateRequest :  IOpenAiModels.ITemperature, IOpenAiModels.IMo
     /// <see href="https://platform.openai.com/docs/api-reference/completions/create#completions/create-temperature" />
     [JsonPropertyName("temperature")]
     public float? Temperature { get; set; }
+
+    public IEnumerable<ValidationResult> Validate()
+    {
+        throw new NotImplementedException();
+    }
 }

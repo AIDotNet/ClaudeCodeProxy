@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using OpenAI.ObjectModels;
 using Thor.Abstractions.Dtos;
 
 namespace Thor.Abstractions.ObjectModels.ObjectModels.SharedModels;

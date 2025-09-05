@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.ClientModel" Version="1.5.1" />
-        <PackageReference Include="System.Memory.Data" Version="9.0.2" />
+        <PackageReference Include="System.ClientModel" Version="1.5.1"/>
+        <PackageReference Include="System.Memory.Data" Version="9.0.2"/>
     </ItemGroup>
 </Project>

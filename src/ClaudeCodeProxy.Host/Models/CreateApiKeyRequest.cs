@@ -1,7 +1,7 @@
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 创建API Key请求模型
+///     创建API Key请求模型
 /// </summary>
 public record CreateApiKeyRequest(
     string Name,

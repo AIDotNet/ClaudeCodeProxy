@@ -1,10 +1,9 @@
 using ClaudeCodeProxy.Domain;
-using ClaudeCodeProxy.Host.Helper;
 
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 创建账户请求模型
+///     创建账户请求模型
 /// </summary>
 public record CreateAccountRequest(
     string Name,
@@ -20,7 +19,7 @@ public record CreateAccountRequest(
 );
 
 /// <summary>
-/// 更新账户请求模型
+///     更新账户请求模型
 /// </summary>
 public record UpdateAccountRequest(
     string? Name = null,

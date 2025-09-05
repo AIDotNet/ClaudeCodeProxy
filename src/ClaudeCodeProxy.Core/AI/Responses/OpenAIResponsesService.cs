@@ -26,15 +26,12 @@ public sealed class OpenAIResponsesService(ILogger<OpenAIResponsesService> logge
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).PostJsonAsync(
             options?.Address.TrimEnd('/') + "/responses",
-            input, options.ApiKey,headers).ConfigureAwait(false);
+            input, options.ApiKey, headers).ConfigureAwait(false);
 
         openai?.SetTag("Model", input.Model);
         openai?.SetTag("Response", response.StatusCode.ToString());
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            throw new BusinessException("渠道未登录,请联系管理人员", "401");
-        }
+        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new BusinessException("渠道未登录,请联系管理人员", "401");
 
         // 大于等于400的状态码都认为是异常
         if (response.StatusCode >= HttpStatusCode.BadRequest)
@@ -48,7 +45,7 @@ public sealed class OpenAIResponsesService(ILogger<OpenAIResponsesService> logge
 
         var result =
             await response.Content.ReadFromJsonAsync<ResponsesDto>(
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken).ConfigureAwait(false);
 
         return result;
     }
@@ -64,15 +61,12 @@ public sealed class OpenAIResponsesService(ILogger<OpenAIResponsesService> logge
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).PostJsonAsync(
             options?.Address.TrimEnd('/') + "/responses",
-            input, options.ApiKey,headers).ConfigureAwait(false);
+            input, options.ApiKey, headers).ConfigureAwait(false);
 
         openai?.SetTag("Model", input.Model);
         openai?.SetTag("Response", response.StatusCode.ToString());
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            throw new BusinessException("渠道未登录,请联系管理人员", "401");
-        }
+        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new BusinessException("渠道未登录,请联系管理人员", "401");
 
         // 大于等于400的状态码都认为是异常
         if (response.StatusCode >= HttpStatusCode.BadRequest)
@@ -88,17 +82,14 @@ public sealed class OpenAIResponsesService(ILogger<OpenAIResponsesService> logge
         using var stream = new StreamReader(await response.Content.ReadAsStreamAsync(cancellationToken));
 
         using StreamReader reader = new(await response.Content.ReadAsStreamAsync(cancellationToken));
-        string? line = string.Empty;
+        var line = string.Empty;
         var first = true;
         var isThink = false;
 
         var @event = string.Empty;
         while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
         {
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
+            if (string.IsNullOrWhiteSpace(line)) continue;
 
             if (line.StartsWith("event: "))
             {
@@ -106,10 +97,7 @@ public sealed class OpenAIResponsesService(ILogger<OpenAIResponsesService> logge
                 continue;
             }
 
-            if (line.StartsWith("data: "))
-            {
-                line = line[6..].Trim();
-            }
+            if (line.StartsWith("data: ")) line = line[6..].Trim();
 
 
             var result = JsonSerializer.Deserialize<ResponsesSSEDto<ResponsesDto>>(line,

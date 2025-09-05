@@ -1,19 +1,19 @@
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
-using ClaudeCodeProxy.Host.Services;
-using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Helper;
+using ClaudeCodeProxy.Host.Models;
+using ClaudeCodeProxy.Host.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 账户相关端点
+///     账户相关端点
 /// </summary>
 public static class AccountEndpoints
 {
     /// <summary>
-    /// 配置账户相关路由
+    ///     配置账户相关路由
     /// </summary>
     public static void MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -133,7 +133,7 @@ public static class AccountEndpoints
         group.MapPost("/openai/oauth/generate-auth-url", GenerateOpenAiOAuthUrl)
             .WithName("GenerateOpenAiOAuthUrl")
             .WithSummary("生成OpenAI OAuth授权链接")
-            .Produces<object>(200)
+            .Produces<object>()
             .Produces(400);
 
         // 处理OpenAI OAuth授权码
@@ -145,7 +145,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 获取所有账户（支持用户权限过滤）
+    ///     获取所有账户（支持用户权限过滤）
     /// </summary>
     private static async Task<Results<Ok<List<Accounts>>, BadRequest<string>>> GetAccounts(
         AccountsService accountsService,
@@ -159,18 +159,14 @@ public static class AccountEndpoints
             var isAdmin = userContext.IsAdmin();
 
             List<Accounts> accounts;
-            
+
             if (bindingService != null && userId != Guid.Empty && !isAdmin)
-            {
                 // 普通用户只能看到有权限访问的账户
                 accounts = await bindingService.GetVisibleAccountsForUserAsync(userId, isAdmin);
-            }
             else
-            {
                 // 管理员可以看到所有账户
                 accounts = await accountsService.GetAllAccountsAsync();
-            }
-            
+
             return TypedResults.Ok(accounts);
         }
         catch (Exception ex)
@@ -180,7 +176,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 根据ID获取账户
+    ///     根据ID获取账户
     /// </summary>
     private static async Task<Results<Ok<Accounts>, NotFound<string>>> GetAccountById(
         string id,
@@ -190,10 +186,7 @@ public static class AccountEndpoints
         {
             var account = await accountsService.GetAccountByIdAsync(id);
 
-            if (account == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (account == null) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok(account);
         }
@@ -204,7 +197,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 创建新账户
+    ///     创建新账户
     /// </summary>
     private static async Task<Results<Created<Accounts>, BadRequest<string>>> CreateAccount(
         string platform,
@@ -223,7 +216,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 更新账户
+    ///     更新账户
     /// </summary>
     private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateAccount(
         string id,
@@ -233,10 +226,7 @@ public static class AccountEndpoints
         try
         {
             var account = await accountsService.UpdateAccountAsync(id, request);
-            if (account == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (account == null) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok(account);
         }
@@ -247,7 +237,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 删除账户
+    ///     删除账户
     /// </summary>
     private static async Task<Results<NoContent, NotFound<string>>> DeleteAccount(
         string id,
@@ -256,10 +246,7 @@ public static class AccountEndpoints
         try
         {
             var success = await accountsService.DeleteAccountAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.NoContent();
         }
@@ -270,7 +257,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 根据平台获取账户
+    ///     根据平台获取账户
     /// </summary>
     private static async Task<Results<Ok<List<Accounts>>, BadRequest<string>>> GetAccountsByPlatform(
         string platform,
@@ -288,7 +275,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 获取可用账户
+    ///     获取可用账户
     /// </summary>
     private static async Task<Results<Ok<List<Accounts>>, BadRequest<string>>> GetAvailableAccounts(
         string? platform,
@@ -306,7 +293,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 更新账户状态
+    ///     更新账户状态
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> UpdateAccountStatus(
         string id,
@@ -316,10 +303,7 @@ public static class AccountEndpoints
         try
         {
             var success = await accountsService.UpdateAccountStatusAsync(id, status);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok();
         }
@@ -330,7 +314,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 更新账户使用时间
+    ///     更新账户使用时间
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> UpdateAccountUsage(
         string id,
@@ -339,10 +323,7 @@ public static class AccountEndpoints
         try
         {
             var success = await accountsService.UpdateLastUsedAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok();
         }
@@ -353,7 +334,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 启用账户
+    ///     启用账户
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> EnableAccount(
         string id,
@@ -362,10 +343,7 @@ public static class AccountEndpoints
         try
         {
             var success = await accountsService.EnableAccountAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok();
         }
@@ -376,7 +354,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 禁用账户
+    ///     禁用账户
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> DisableAccount(
         string id,
@@ -385,10 +363,7 @@ public static class AccountEndpoints
         try
         {
             var success = await accountsService.DisableAccountAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok();
         }
@@ -399,7 +374,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 切换账户启用状态
+    ///     切换账户启用状态
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> ToggleAccountEnabled(
         string id,
@@ -408,10 +383,7 @@ public static class AccountEndpoints
         try
         {
             var success = await accountsService.ToggleAccountEnabledAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的账户");
 
             return TypedResults.Ok();
         }
@@ -422,7 +394,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 更新Claude账户
+    ///     更新Claude账户
     /// </summary>
     private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateClaudeAccount(
         string id,
@@ -432,10 +404,7 @@ public static class AccountEndpoints
         try
         {
             var account = await accountsService.UpdateAccountAsync(id, request);
-            if (account == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的Claude账户");
-            }
+            if (account == null) return TypedResults.NotFound($"未找到ID为 {id} 的Claude账户");
 
             return TypedResults.Ok(account);
         }
@@ -446,7 +415,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 更新Claude Console账户
+    ///     更新Claude Console账户
     /// </summary>
     private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateClaudeConsoleAccount(
         string id,
@@ -456,10 +425,7 @@ public static class AccountEndpoints
         try
         {
             var account = await accountsService.UpdateAccountAsync(id, request);
-            if (account == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的Claude Console账户");
-            }
+            if (account == null) return TypedResults.NotFound($"未找到ID为 {id} 的Claude Console账户");
 
             return TypedResults.Ok(account);
         }
@@ -470,7 +436,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 更新Gemini账户
+    ///     更新Gemini账户
     /// </summary>
     private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateGeminiAccount(
         string id,
@@ -480,10 +446,7 @@ public static class AccountEndpoints
         try
         {
             var account = await accountsService.UpdateAccountAsync(id, request);
-            if (account == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的Gemini账户");
-            }
+            if (account == null) return TypedResults.NotFound($"未找到ID为 {id} 的Gemini账户");
 
             return TypedResults.Ok(account);
         }
@@ -494,7 +457,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 生成OpenAI OAuth授权链接
+    ///     生成OpenAI OAuth授权链接
     /// </summary>
     private static async Task<Results<Ok<object>, BadRequest<string>>> GenerateOpenAiOAuthUrl(
         GenerateOpenAiOAuthUrlRequest request,
@@ -504,7 +467,7 @@ public static class AccountEndpoints
         try
         {
             var oAuthParams = oAuthHelper.GenerateOAuthParams(request.ClientId, request.RedirectUri);
-            
+
             // 将OAuth会话数据存储到缓存中，用于后续验证
             var sessionData = new OAuthSessionData
             {
@@ -515,10 +478,10 @@ public static class AccountEndpoints
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(10) // 10分钟过期
             };
-            
+
             // 存储会话数据
             sessionService.StoreSession(oAuthParams.State, sessionData);
-            
+
             return TypedResults.Ok((object)new
             {
                 authUrl = oAuthParams.AuthUrl,
@@ -535,7 +498,7 @@ public static class AccountEndpoints
     }
 
     /// <summary>
-    /// 处理OpenAI OAuth授权码并创建账户
+    ///     处理OpenAI OAuth授权码并创建账户
     /// </summary>
     private static async Task<Results<Created<Accounts>, BadRequest<string>>> ExchangeOpenAiOAuthCode(
         ExchangeOpenAiOAuthCodeRequest request,
@@ -547,10 +510,7 @@ public static class AccountEndpoints
         {
             // 从缓存中获取OAuth会话数据
             var sessionData = sessionService.GetSession(request.SessionId);
-            if (sessionData == null)
-            {
-                return TypedResults.BadRequest("OAuth会话已过期或无效，请重新获取授权链接");
-            }
+            if (sessionData == null) return TypedResults.BadRequest("OAuth会话已过期或无效，请重新获取授权链接");
 
             // 使用会话数据中的参数进行token交换
             var tokenResponse = await oAuthHelper.ExchangeCodeForTokensAsync(
@@ -562,30 +522,31 @@ public static class AccountEndpoints
                 sessionData.Proxy ?? request.Proxy);
 
             // 获取用户信息
-            var userInfo = await oAuthHelper.GetUserInfoAsync(tokenResponse.AccessToken, sessionData.Proxy ?? request.Proxy);
+            var userInfo =
+                await oAuthHelper.GetUserInfoAsync(tokenResponse.AccessToken, sessionData.Proxy ?? request.Proxy);
 
             // 格式化OAuth凭据
             var oauthCredentials = oAuthHelper.FormatOpenAiCredentials(tokenResponse, userInfo);
 
             // 创建账户
             var createRequest = new CreateAccountRequest(
-                Name: request.AccountName ?? $"OpenAI - {userInfo.Email}",
-                Description: request.Description ?? $"OpenAI账户 - {userInfo.Name}",
-                ApiKey: "", // OpenAI OAuth不需要传统的API Key
-                ApiUrl: "", // OpenAI OAuth不需要传统的API URL
-                AccountType: request.AccountType ?? "shared",
-                UserAgent: null,
-                Proxy: sessionData.Proxy ?? request.Proxy,
-                ClaudeAiOauth: null,
-                OpenAiOauth: oauthCredentials,
-                Priority: request.Priority ?? 50
+                request.AccountName ?? $"OpenAI - {userInfo.Email}",
+                request.Description ?? $"OpenAI账户 - {userInfo.Name}",
+                "", // OpenAI OAuth不需要传统的API Key
+                "", // OpenAI OAuth不需要传统的API URL
+                request.AccountType ?? "shared",
+                null,
+                sessionData.Proxy ?? request.Proxy,
+                null,
+                oauthCredentials,
+                request.Priority ?? 50
             );
 
             var account = await accountsService.CreateAccountAsync("openai", createRequest);
-            
+
             // 清理已使用的会话数据
             sessionService.RemoveSession(request.SessionId);
-            
+
             return TypedResults.Created($"/api/accounts/{account.Id}", account);
         }
         catch (Exception ex)

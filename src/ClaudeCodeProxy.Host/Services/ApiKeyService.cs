@@ -1,10 +1,8 @@
+using System.Security.Cryptography;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
-using ClaudeCodeProxy.Host.Endpoints;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 using ClaudeCodeProxy.Host.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClaudeCodeProxy.Host.Services;
 
@@ -18,17 +16,15 @@ public class ApiKeyService(IContext context)
             .FirstOrDefaultAsync(x => x.KeyValue == key, cancellationToken);
 
         if (apiKey != null)
-        {
             await context.ApiKeys
                 .Where(x => x.Id == apiKey.Id)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.Now), cancellationToken);
-        }
 
         return apiKey;
     }
 
     /// <summary>
-    /// 获取所有API Keys
+    ///     获取所有API Keys
     /// </summary>
     public async Task<List<ApiKey>> GetAllApiKeysAsync(IUserContext userContext,
         CancellationToken cancellationToken = default)
@@ -42,7 +38,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 获取指定用户的API Keys
+    ///     获取指定用户的API Keys
     /// </summary>
     public async Task<List<ApiKey>> GetUserApiKeysAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -55,7 +51,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 根据ID获取API Key
+    ///     根据ID获取API Key
     /// </summary>
     public async Task<ApiKey?> GetApiKeyByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -66,7 +62,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 创建新的API Key
+    ///     创建新的API Key
     /// </summary>
     public async Task<ApiKey> CreateApiKeyAsync(CreateApiKeyRequest request, Guid userId,
         CancellationToken cancellationToken = default)
@@ -111,16 +107,13 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 更新API Key
+    ///     更新API Key
     /// </summary>
     public async Task<ApiKey?> UpdateApiKeyAsync(Guid id, UpdateApiKeyRequest request,
         CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (apiKey == null)
-        {
-            return null;
-        }
+        if (apiKey == null) return null;
 
         if (!string.IsNullOrEmpty(request.Name))
             apiKey.Name = request.Name;
@@ -196,15 +189,12 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 删除API Key
+    ///     删除API Key
     /// </summary>
     public async Task<bool> DeleteApiKeyAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (apiKey == null)
-        {
-            return false;
-        }
+        if (apiKey == null) return false;
 
         context.ApiKeys.Remove(apiKey);
         await context.SaveAsync(cancellationToken);
@@ -212,7 +202,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 启用API Key
+    ///     启用API Key
     /// </summary>
     public async Task<bool> EnableApiKeyAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -228,7 +218,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 禁用API Key
+    ///     禁用API Key
     /// </summary>
     public async Task<bool> DisableApiKeyAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -244,15 +234,12 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 切换API Key启用状态
+    ///     切换API Key启用状态
     /// </summary>
     public async Task<bool> ToggleApiKeyEnabledAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (apiKey == null)
-        {
-            return false;
-        }
+        if (apiKey == null) return false;
 
         apiKey.IsEnabled = !apiKey.IsEnabled;
         apiKey.ModifiedAt = DateTime.Now;
@@ -262,7 +249,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 验证API Key
+    ///     验证API Key
     /// </summary>
     public async Task<bool> ValidateApiKeyAsync(string key, CancellationToken cancellationToken = default)
     {
@@ -278,7 +265,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 获取API Key并刷新费用使用状态
+    ///     获取API Key并刷新费用使用状态
     /// </summary>
     public async Task<ApiKey?> GetApiKeyWithRefreshedUsageAsync(string key,
         CancellationToken cancellationToken = default)
@@ -302,7 +289,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 刷新API Key的使用状态
+    ///     刷新API Key的使用状态
     /// </summary>
     private async Task RefreshApiKeyUsageAsync(ApiKey apiKey, CancellationToken cancellationToken = default)
     {
@@ -310,7 +297,7 @@ public class ApiKeyService(IContext context)
         var today = now.Date;
         var currentMonth = new DateTime(now.Year, now.Month, 1);
 
-        bool needsUpdate = false;
+        var needsUpdate = false;
 
         // 检查是否需要重置每日使用量
         var lastUsedDate = apiKey.LastUsedAt?.Date;
@@ -330,14 +317,11 @@ public class ApiKeyService(IContext context)
             needsUpdate = true;
         }
 
-        if (needsUpdate)
-        {
-            await context.SaveAsync(cancellationToken);
-        }
+        if (needsUpdate) await context.SaveAsync(cancellationToken);
     }
 
     /// <summary>
-    /// 生成API Key
+    ///     生成API Key
     /// </summary>
     private static string GenerateApiKey()
     {
@@ -348,7 +332,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 获取API Key账户绑定管理信息
+    ///     获取API Key账户绑定管理信息
     /// </summary>
     public async Task<ApiKeyBindingManagementDto?> GetApiKeyBindingManagementAsync(
         Guid apiKeyId,
@@ -358,10 +342,7 @@ public class ApiKeyService(IContext context)
             .Include(a => a.User)
             .FirstOrDefaultAsync(a => a.Id == apiKeyId, cancellationToken);
 
-        if (apiKey == null)
-        {
-            return null;
-        }
+        if (apiKey == null) return null;
 
         // 获取当前绑定的账户信息
         var accountBindings = new List<ApiKeyAccountBindingDto>();
@@ -420,7 +401,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 设置API Key默认账户
+    ///     设置API Key默认账户
     /// </summary>
     public async Task<bool> SetDefaultAccountAsync(
         Guid apiKeyId,
@@ -428,10 +409,7 @@ public class ApiKeyService(IContext context)
         CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys.FirstOrDefaultAsync(a => a.Id == apiKeyId, cancellationToken);
-        if (apiKey == null)
-        {
-            return false;
-        }
+        if (apiKey == null) return false;
 
         // 验证账户存在且用户有权限使用
         var account = await context.Accounts
@@ -440,10 +418,7 @@ public class ApiKeyService(IContext context)
                                       (a.IsGlobal || a.OwnerUserId == apiKey.UserId),
                 cancellationToken);
 
-        if (account == null)
-        {
-            throw new ArgumentException($"账户不存在或用户无权限使用: {accountId}");
-        }
+        if (account == null) throw new ArgumentException($"账户不存在或用户无权限使用: {accountId}");
 
         apiKey.DefaultAccountId = accountId;
         apiKey.ModifiedAt = DateTime.Now;
@@ -453,7 +428,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 更新API Key账户绑定
+    ///     更新API Key账户绑定
     /// </summary>
     public async Task<bool> UpdateAccountBindingsAsync(
         Guid apiKeyId,
@@ -462,17 +437,11 @@ public class ApiKeyService(IContext context)
         CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys.FirstOrDefaultAsync(a => a.Id == apiKeyId, cancellationToken);
-        if (apiKey == null)
-        {
-            return false;
-        }
+        if (apiKey == null) return false;
 
         // 验证所有账户都存在且用户有权限使用
         var accountIds = bindings.Select(b => b.AccountId).ToList();
-        if (!string.IsNullOrEmpty(defaultAccountId))
-        {
-            accountIds.Add(defaultAccountId);
-        }
+        if (!string.IsNullOrEmpty(defaultAccountId)) accountIds.Add(defaultAccountId);
 
         var validAccounts = await context.Accounts
             .Where(a => accountIds.Contains(a.Id) &&
@@ -483,9 +452,7 @@ public class ApiKeyService(IContext context)
 
         var invalidAccountIds = accountIds.Except(validAccounts).ToList();
         if (invalidAccountIds.Any())
-        {
             throw new ArgumentException($"以下账户不存在或用户无权限使用: {string.Join(", ", invalidAccountIds)}");
-        }
 
         // 更新绑定信息
         var newBindings = bindings.Select(b => new ApiKeyAccountBinding
@@ -504,7 +471,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 更新API Key使用统计
+    ///     更新API Key使用统计
     /// </summary>
     public async Task UpdateApiKeyUsageAsync(Guid apiKeyId, decimal cost, CancellationToken cancellationToken = default)
     {
@@ -524,7 +491,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 获取建议的优先级
+    ///     获取建议的优先级
     /// </summary>
     private static int GetSuggestedPriority(Accounts account)
     {
@@ -537,7 +504,7 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
-    /// 查询API Key额度信息
+    ///     查询API Key额度信息
     /// </summary>
     public async Task<QuotaQueryResponse?> QueryQuotaAsync(string apiKey, CancellationToken cancellationToken = default)
     {
@@ -546,10 +513,7 @@ public class ApiKeyService(IContext context)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.KeyValue == apiKey, cancellationToken);
 
-        if (key == null || !key.IsEnabled)
-        {
-            return null;
-        }
+        if (key == null || !key.IsEnabled) return null;
 
         await RefreshApiKeyUsageAsync(key, cancellationToken);
 
@@ -600,7 +564,6 @@ public class ApiKeyService(IContext context)
                 .FirstOrDefaultAsync(a => a.Id == key.DefaultAccountId, cancellationToken);
 
             if (account != null)
-            {
                 response.AccountBinding = new AccountBindingInfo
                 {
                     IsBound = true,
@@ -616,7 +579,6 @@ public class ApiKeyService(IContext context)
                     CreatedAt = key.CreatedAt,
                     ExpiresAt = key.ExpiresAt,
                     RateLimitedUntil = account.RateLimitedUntil,
-
                     // 速率限制信息（基于API Key的限制设置）
                     RateLimiting = new RateLimitingInfo
                     {
@@ -624,7 +586,6 @@ public class ApiKeyService(IContext context)
                         RequestsPerMinute = key.RateLimitWindow == 1 ? key.RateLimitRequests : null,
                         RequestsPerHour = key.RateLimitWindow == 60 ? key.RateLimitRequests : null,
                         RequestsPerDay = key.RateLimitWindow == 1440 ? key.RateLimitRequests : null,
-
                         // 这里可以添加实际的使用量统计，目前使用模拟数据
                         CurrentUsage = new CurrentUsage
                         {
@@ -641,7 +602,6 @@ public class ApiKeyService(IContext context)
                         }
                     }
                 };
-            }
         }
         else
         {

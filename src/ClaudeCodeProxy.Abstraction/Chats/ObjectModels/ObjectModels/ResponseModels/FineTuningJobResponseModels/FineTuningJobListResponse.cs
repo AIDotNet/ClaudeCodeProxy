@@ -5,10 +5,7 @@ namespace Thor.Abstractions.ObjectModels.ObjectModels.ResponseModels.FineTuningJ
 
 public record FineTuningJobListResponse : ThorBaseResponse
 {
-    [JsonPropertyName("data")]
-    public List<FineTuningJobResponse> Data { get; set; }
+    [JsonPropertyName("data")] public List<FineTuningJobResponse> Data { get; set; }
 
-    [JsonPropertyName("has_more")]
-    public bool HasMore { get; set; }
+    [JsonPropertyName("has_more")] public bool HasMore { get; set; }
 }
-

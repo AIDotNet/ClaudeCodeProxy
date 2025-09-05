@@ -1,14 +1,13 @@
-using ClaudeCodeProxy.Core;
-using ClaudeCodeProxy.Domain;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
+using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Env;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 数据库初始化服务
+///     数据库初始化服务
 /// </summary>
 public class DatabaseInitializationService(
     IContext context,
@@ -16,7 +15,7 @@ public class DatabaseInitializationService(
     IConfiguration configuration)
 {
     /// <summary>
-    /// 初始化数据库
+    ///     初始化数据库
     /// </summary>
     public async Task InitializeAsync()
     {
@@ -40,7 +39,7 @@ public class DatabaseInitializationService(
     }
 
     /// <summary>
-    /// 初始化默认角色
+    ///     初始化默认角色
     /// </summary>
     private async Task InitializeRolesAsync()
     {
@@ -92,7 +91,7 @@ public class DatabaseInitializationService(
     }
 
     /// <summary>
-    /// 初始化默认管理员用户
+    ///     初始化默认管理员用户
     /// </summary>
     private async Task InitializeAdminUserAsync()
     {
@@ -136,7 +135,7 @@ public class DatabaseInitializationService(
     }
 
     /// <summary>
-    /// 为管理员用户创建钱包
+    ///     为管理员用户创建钱包
     /// </summary>
     private async Task CreateAdminWalletAsync(Guid userId)
     {
@@ -160,7 +159,7 @@ public class DatabaseInitializationService(
     }
 
     /// <summary>
-    /// 哈希密码
+    ///     哈希密码
     /// </summary>
     private string HashPassword(string password)
     {

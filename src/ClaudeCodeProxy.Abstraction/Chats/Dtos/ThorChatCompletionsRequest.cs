@@ -38,12 +38,6 @@ public class ThorChatCompletionsRequest : IOpenAiModels.ITemperature, IOpenAiMod
     public List<ThorChatMessage> Messages { get; set; }
 
     /// <summary>
-    ///     模型唯一编码值，如 gpt-4，gpt-3.5-turbo,moonshot-v1-8k，看底层具体平台定义
-    /// </summary>
-    [JsonPropertyName("model")]
-    public string Model { get; set; }
-
-    /// <summary>
     ///     温度采样的替代方法称为核采样，介于 0 和 1 之间，其中模型考虑具有 top_p 概率质量的标记的结果。
     ///     因此 0.1 意味着仅考虑包含前 10% 概率质量的标记。
     ///     我们通常建议更改此项或 temperature ，但不要同时更改两者。
@@ -51,15 +45,6 @@ public class ThorChatCompletionsRequest : IOpenAiModels.ITemperature, IOpenAiMod
     /// </summary>
     [JsonPropertyName("top_p")]
     public float? TopP { get; set; }
-
-    /// <summary>
-    ///     使用什么采样温度，介于 0 和 2 之间。
-    ///     较高的值（如 0.8）将使输出更加随机，而较低的值（如 0.2）将使其更加集中和确定性。
-    ///     我们通常建议更改此项或 top_p ，但不要同时更改两者。
-    ///     默认 1
-    /// </summary>
-    [JsonPropertyName("temperature")]
-    public float? Temperature { get; set; }
 
     /// <summary>
     ///     为每条输入消息生成多少个结果
@@ -267,18 +252,33 @@ public class ThorChatCompletionsRequest : IOpenAiModels.ITemperature, IOpenAiMod
     [JsonPropertyName("seed")]
     public int? Seed { get; set; }
 
-    /// <summary>
-    ///     代表您的最终用户的唯一标识符，可以帮助 OpenAI 监控和检测滥用行为。
-    /// </summary>
-    [JsonPropertyName("user")]
-    public string User { get; set; }
-
     [JsonPropertyName("thinking")] public ThorChatClaudeThinking Thinking { get; set; }
 
     [JsonPropertyName("enable_thinking")] public bool? EnableThinking { get; set; }
 
     [JsonPropertyName("web_search_options")]
     public ThorChatWebSearchOptions? WebSearchOptions { get; set; } = null;
+
+    /// <summary>
+    ///     模型唯一编码值，如 gpt-4，gpt-3.5-turbo,moonshot-v1-8k，看底层具体平台定义
+    /// </summary>
+    [JsonPropertyName("model")]
+    public string Model { get; set; }
+
+    /// <summary>
+    ///     使用什么采样温度，介于 0 和 2 之间。
+    ///     较高的值（如 0.8）将使输出更加随机，而较低的值（如 0.2）将使其更加集中和确定性。
+    ///     我们通常建议更改此项或 top_p ，但不要同时更改两者。
+    ///     默认 1
+    /// </summary>
+    [JsonPropertyName("temperature")]
+    public float? Temperature { get; set; }
+
+    /// <summary>
+    ///     代表您的最终用户的唯一标识符，可以帮助 OpenAI 监控和检测滥用行为。
+    /// </summary>
+    [JsonPropertyName("user")]
+    public string User { get; set; }
 
     /// <summary>
     ///     参数验证

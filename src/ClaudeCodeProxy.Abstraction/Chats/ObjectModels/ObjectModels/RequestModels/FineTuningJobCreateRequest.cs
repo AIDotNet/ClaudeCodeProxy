@@ -32,7 +32,12 @@ public record FineTuningJobCreateRequest : IOpenAiModels.IModel
     ///     The hyperparameters used for the fine-tuning job.
     /// </summary>
     [JsonPropertyName("hyperparameters")]
-    public HyperparametersRequestModel? Hyperparameters { get; set; } // This can be further detailed if the properties of the hyperparameters are known.
+    public HyperparametersRequestModel?
+        Hyperparameters
+    {
+        get;
+        set;
+    } // This can be further detailed if the properties of the hyperparameters are known.
 
     /// <summary>
     ///     A string of up to 18 characters that will be added to your fine-tuned model name.

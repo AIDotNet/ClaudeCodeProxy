@@ -1,14 +1,14 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Web;
 using ClaudeCodeProxy.Domain;
-using Microsoft.Extensions.Logging;
 
 namespace ClaudeCodeProxy.Host.Helper;
 
 /// <summary>
-/// OpenAI OAuth配置
+///     OpenAI OAuth配置
 /// </summary>
 public static class OpenAiOAuthConfig
 {
@@ -21,7 +21,7 @@ public static class OpenAiOAuthConfig
 }
 
 /// <summary>
-/// OpenAI OAuth参数
+///     OpenAI OAuth参数
 /// </summary>
 public class OpenAiOAuthParams
 {
@@ -32,7 +32,7 @@ public class OpenAiOAuthParams
 }
 
 /// <summary>
-/// OpenAI OAuth令牌响应
+///     OpenAI OAuth令牌响应
 /// </summary>
 public class OpenAiTokenResponse
 {
@@ -45,12 +45,12 @@ public class OpenAiTokenResponse
 }
 
 /// <summary>
-/// OpenAI OAuth辅助类
+///     OpenAI OAuth辅助类
 /// </summary>
 public class OpenAiOAuthHelper
 {
-    private readonly ILogger<OpenAiOAuthHelper> _logger;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<OpenAiOAuthHelper> _logger;
 
     public OpenAiOAuthHelper(ILogger<OpenAiOAuthHelper> logger, HttpClient httpClient)
     {
@@ -59,7 +59,7 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 生成随机状态参数
+    ///     生成随机状态参数
     /// </summary>
     public string GenerateState()
     {
@@ -73,7 +73,7 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 生成代码验证器
+    ///     生成代码验证器
     /// </summary>
     public string GenerateCodeVerifier()
     {
@@ -87,7 +87,7 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 生成代码挑战
+    ///     生成代码挑战
     /// </summary>
     public string GenerateCodeChallenge(string codeVerifier)
     {
@@ -101,9 +101,10 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 生成OAuth授权URL
+    ///     生成OAuth授权URL
     /// </summary>
-    public string GenerateAuthUrl(string codeChallenge, string state, string? customClientId = null, string? customRedirectUri = null)
+    public string GenerateAuthUrl(string codeChallenge, string state, string? customClientId = null,
+        string? customRedirectUri = null)
     {
         var queryParams = HttpUtility.ParseQueryString(string.Empty);
         queryParams["response_type"] = "code";
@@ -120,7 +121,7 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 生成OAuth参数
+    ///     生成OAuth参数
     /// </summary>
     public OpenAiOAuthParams GenerateOAuthParams(string? customClientId = null, string? customRedirectUri = null)
     {
@@ -139,30 +140,23 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 解析回调URL中的授权码
+    ///     解析回调URL中的授权码
     /// </summary>
     public string ParseCallbackUrl(string input)
     {
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            throw new ArgumentException("请提供有效的授权码或回调 URL");
-        }
+        if (string.IsNullOrWhiteSpace(input)) throw new ArgumentException("请提供有效的授权码或回调 URL");
 
         var trimmedInput = input.Trim();
 
         // 如果输入是URL，则从中提取code参数
         if (trimmedInput.StartsWith("http://") || trimmedInput.StartsWith("https://"))
-        {
             try
             {
                 var uri = new Uri(trimmedInput);
                 var query = HttpUtility.ParseQueryString(uri.Query);
                 var authorizationCode = query["code"];
 
-                if (string.IsNullOrEmpty(authorizationCode))
-                {
-                    throw new ArgumentException("回调 URL 中未找到授权码 (code 参数)");
-                }
+                if (string.IsNullOrEmpty(authorizationCode)) throw new ArgumentException("回调 URL 中未找到授权码 (code 参数)");
 
                 return authorizationCode;
             }
@@ -170,26 +164,23 @@ public class OpenAiOAuthHelper
             {
                 throw new ArgumentException("无效的 URL 格式，请检查回调 URL 是否正确");
             }
-        }
 
         // 如果输入是纯授权码，直接返回
         var cleanedCode = trimmedInput.Split('#')[0]?.Split('&')[0] ?? trimmedInput;
 
         if (string.IsNullOrEmpty(cleanedCode) || cleanedCode.Length < 10)
-        {
             throw new ArgumentException("授权码格式无效，请确保复制了完整的 Authorization Code");
-        }
 
         return cleanedCode;
     }
 
     /// <summary>
-    /// 使用授权码交换令牌
+    ///     使用授权码交换令牌
     /// </summary>
     public async Task<OpenAiTokenResponse> ExchangeCodeForTokensAsync(
-        string authorizationCode, 
+        string authorizationCode,
         string codeVerifier,
-        string state, 
+        string state,
         string? customClientId = null,
         string? customRedirectUri = null,
         ProxyConfig? proxyConfig = null)
@@ -218,7 +209,7 @@ public class OpenAiOAuthHelper
             });
 
             var content = new FormUrlEncodedContent(parameters);
-            
+
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("User-Agent", "OpenAI-CLI/1.0");
             httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -246,8 +237,8 @@ public class OpenAiOAuthHelper
             _logger.LogInformation("✅ OpenAI OAuth token exchange successful");
 
             var accessToken = root.GetProperty("access_token").GetString() ?? "";
-            var refreshToken = root.TryGetProperty("refresh_token", out var refreshElement) 
-                ? refreshElement.GetString() ?? "" 
+            var refreshToken = root.TryGetProperty("refresh_token", out var refreshElement)
+                ? refreshElement.GetString() ?? ""
                 : "";
             var idToken = root.TryGetProperty("id_token", out var idElement)
                 ? idElement.GetString() ?? ""
@@ -255,8 +246,8 @@ public class OpenAiOAuthHelper
             var expiresIn = root.TryGetProperty("expires_in", out var expiresElement)
                 ? expiresElement.GetInt64()
                 : 3600;
-            var scopeString = root.TryGetProperty("scope", out var scope) 
-                ? scope.GetString() 
+            var scopeString = root.TryGetProperty("scope", out var scope)
+                ? scope.GetString()
                 : OpenAiOAuthConfig.Scopes;
 
             return new OpenAiTokenResponse
@@ -282,7 +273,7 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 获取用户信息
+    ///     获取用户信息
     /// </summary>
     public async Task<OpenAiUserInfo> GetUserInfoAsync(string accessToken, ProxyConfig? proxyConfig = null)
     {
@@ -300,7 +291,7 @@ public class OpenAiOAuthHelper
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("❌ Failed to get OpenAI user info: HTTP {Status} - {Error}", 
+                _logger.LogError("❌ Failed to get OpenAI user info: HTTP {Status} - {Error}",
                     (int)response.StatusCode, errorContent);
                 throw new Exception($"Failed to get user info: HTTP {(int)response.StatusCode}");
             }
@@ -321,7 +312,7 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 格式化OpenAI凭据
+    ///     格式化OpenAI凭据
     /// </summary>
     public OpenAiOauth FormatOpenAiCredentials(OpenAiTokenResponse tokenData, OpenAiUserInfo userInfo)
     {
@@ -337,14 +328,11 @@ public class OpenAiOAuthHelper
     }
 
     /// <summary>
-    /// 创建带代理的HttpClient
+    ///     创建带代理的HttpClient
     /// </summary>
     private HttpClient CreateHttpClientWithProxy(ProxyConfig? proxyConfig)
     {
-        if (proxyConfig == null)
-        {
-            return new HttpClient();
-        }
+        if (proxyConfig == null) return new HttpClient();
 
         try
         {
@@ -352,11 +340,10 @@ public class OpenAiOAuthHelper
             var proxyUri = $"{proxyConfig.Type}://{proxyConfig.Host}:{proxyConfig.Port}";
 
             if (!string.IsNullOrEmpty(proxyConfig.Username) && !string.IsNullOrEmpty(proxyConfig.Password))
-            {
-                proxyUri = $"{proxyConfig.Type}://{proxyConfig.Username}:{proxyConfig.Password}@{proxyConfig.Host}:{proxyConfig.Port}";
-            }
+                proxyUri =
+                    $"{proxyConfig.Type}://{proxyConfig.Username}:{proxyConfig.Password}@{proxyConfig.Host}:{proxyConfig.Port}";
 
-            handler.Proxy = new System.Net.WebProxy(proxyUri);
+            handler.Proxy = new WebProxy(proxyUri);
             handler.UseProxy = true;
 
             return new HttpClient(handler);

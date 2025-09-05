@@ -1,7 +1,5 @@
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
-using ClaudeCodeProxy.Host.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -248,7 +246,8 @@ public static class AnnouncementEndpoints
         return Results.Ok(dto);
     }
 
-    private static async Task<IResult> DeleteAnnouncement(long id, IContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> DeleteAnnouncement(long id, IContext context,
+        CancellationToken cancellationToken)
     {
         var announcement = await context.Announcements
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
@@ -303,7 +302,7 @@ public class AnnouncementDto
     public bool IsVisible { get; set; } = true;
     public string? BackgroundColor { get; set; }
     public string? TextColor { get; set; }
-    public int Priority { get; set; } = 0;
+    public int Priority { get; set; }
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public DateTime CreatedAt { get; set; }

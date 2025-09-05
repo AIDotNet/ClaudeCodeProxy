@@ -1,7 +1,7 @@
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 兑换码DTO
+///     兑换码DTO
 /// </summary>
 public class RedeemCodeDto
 {
@@ -23,49 +23,49 @@ public class RedeemCodeDto
 }
 
 /// <summary>
-/// 创建兑换码请求
+///     创建兑换码请求
 /// </summary>
 public class CreateRedeemCodeRequest
 {
     /// <summary>
-    /// 兑换码类型
+    ///     兑换码类型
     /// </summary>
     public string Type { get; set; } = "balance";
 
     /// <summary>
-    /// 兑换金额
+    ///     兑换金额
     /// </summary>
     public decimal Amount { get; set; }
 
     /// <summary>
-    /// 描述
+    ///     描述
     /// </summary>
     public string? Description { get; set; }
 
     /// <summary>
-    /// 过期时间
+    ///     过期时间
     /// </summary>
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
-    /// 生成数量
+    ///     生成数量
     /// </summary>
     public int Count { get; set; } = 1;
 }
 
 /// <summary>
-/// 使用兑换码请求
+///     使用兑换码请求
 /// </summary>
 public class UseRedeemCodeRequest
 {
     /// <summary>
-    /// 兑换码
+    ///     兑换码
     /// </summary>
     public string Code { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// 兑换码使用结果
+///     兑换码使用结果
 /// </summary>
 public class RedeemCodeUseResult
 {
@@ -77,7 +77,7 @@ public class RedeemCodeUseResult
 }
 
 /// <summary>
-/// 兑换码列表请求
+///     兑换码列表请求
 /// </summary>
 public class RedeemCodeListRequest
 {
@@ -96,7 +96,7 @@ public class RedeemCodeListRequest
 }
 
 /// <summary>
-/// 兑换码列表响应
+///     兑换码列表响应
 /// </summary>
 public class RedeemCodeListResponse
 {
@@ -108,7 +108,7 @@ public class RedeemCodeListResponse
 }
 
 /// <summary>
-/// 兑换记录DTO（用户视角）
+///     兑换记录DTO（用户视角）
 /// </summary>
 public class RedeemRecordDto
 {

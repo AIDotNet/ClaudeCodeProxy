@@ -6,17 +6,21 @@ using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 账户服务实现
+///     账户服务实现
 /// </summary>
 public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger<AccountsService> logger)
 {
+    private string GetAccountCacheKey(string id)
+    {
+        return $"account_{id}";
+    }
+
     /// <summary>
-    /// 获取所有账户
+    ///     获取所有账户
     /// </summary>
     public async Task<List<Accounts>> GetAllAccountsAsync(CancellationToken cancellationToken = default)
     {
@@ -27,17 +31,25 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 根据ID获取账户
+    ///     根据ID获取账户
     /// </summary>
     public async Task<Accounts?> GetAccountByIdAsync(string id, CancellationToken cancellationToken = default)
     {
-        return await context.Accounts
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var account = await memoryCache.GetOrCreateAsync(GetAccountCacheKey(id), async entry =>
+        {
+            var value = await context.Accounts.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+            entry.AbsoluteExpirationRelativeToNow = value == null ? TimeSpan.FromSeconds(1) : TimeSpan.FromMinutes(100);
+
+            return value ?? new Accounts();
+        });
+
+        return account;
     }
 
     /// <summary>
-    /// 根据平台获取账户
+    ///     根据平台获取账户
     /// </summary>
     public async Task<List<Accounts>> GetAccountsByPlatformAsync(string platform,
         CancellationToken cancellationToken = default)
@@ -50,7 +62,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 创建新账户
+    ///     创建新账户
     /// </summary>
     public async Task<Accounts> CreateAccountAsync(
         string platform,
@@ -70,7 +82,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             ClaudeAiOauth = request.ClaudeAiOauth,
             OpenAiOauth = request.OpenAiOauth,
             Priority = request.Priority,
-            AccountType = request.AccountType,
+            AccountType = request.AccountType
         };
 
         await context.Accounts.AddAsync(account, cancellationToken);
@@ -80,16 +92,13 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 更新账户
+    ///     更新账户
     /// </summary>
     public async Task<Accounts?> UpdateAccountAsync(string id, UpdateAccountRequest request,
         CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (account == null)
-        {
-            return null;
-        }
+        if (account == null) return null;
 
         if (!string.IsNullOrEmpty(request.Name))
             account.Name = request.Name;
@@ -141,61 +150,58 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         {
             // 将对象序列化为JSON字符串存储
             if (request.GeminiOauth is string geminiOauthString)
-            {
                 account.GeminiOauth = geminiOauthString;
-            }
             else
-            {
                 account.GeminiOauth =
-                    System.Text.Json.JsonSerializer.Serialize(request.GeminiOauth, ThorJsonSerializer.DefaultOptions);
-            }
+                    JsonSerializer.Serialize(request.GeminiOauth, ThorJsonSerializer.DefaultOptions);
         }
 
         account.Proxy = request.Proxy;
 
         account.ModifiedAt = DateTime.Now;
 
+        memoryCache.Remove(GetAccountCacheKey(id));
+
         await context.SaveAsync(cancellationToken);
         return account;
     }
 
     /// <summary>
-    /// 删除账户
+    ///     删除账户
     /// </summary>
     public async Task<bool> DeleteAccountAsync(string id, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (account == null)
-        {
-            return false;
-        }
+        if (account == null) return false;
 
         context.Accounts.Remove(account);
+
+        memoryCache.Remove(GetAccountCacheKey(id));
+
         await context.SaveAsync(cancellationToken);
         return true;
     }
 
     /// <summary>
-    /// 更新账户状态
+    ///     更新账户状态
     /// </summary>
     public async Task<bool> UpdateAccountStatusAsync(string id, string status,
         CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (account == null)
-        {
-            return false;
-        }
+        if (account == null) return false;
 
         account.Status = status;
         account.ModifiedAt = DateTime.Now;
 
+
+        memoryCache.Remove(GetAccountCacheKey(id));
         await context.SaveAsync(cancellationToken);
         return true;
     }
 
     /// <summary>
-    /// 启用账户
+    ///     启用账户
     /// </summary>
     public async Task<bool> EnableAccountAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -207,11 +213,12 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         var account = await context.Accounts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+        memoryCache.Remove(GetAccountCacheKey(id));
         return account != null;
     }
 
     /// <summary>
-    /// 禁用账户
+    ///     禁用账户
     /// </summary>
     public async Task<bool> DisableAccountAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -223,29 +230,28 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         var account = await context.Accounts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+        memoryCache.Remove(GetAccountCacheKey(id));
         return account != null;
     }
 
     /// <summary>
-    /// 切换账户启用状态
+    ///     切换账户启用状态
     /// </summary>
     public async Task<bool> ToggleAccountEnabledAsync(string id, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (account == null)
-        {
-            return false;
-        }
+        if (account == null) return false;
 
         account.IsEnabled = !account.IsEnabled;
         account.ModifiedAt = DateTime.Now;
 
+        memoryCache.Remove(GetAccountCacheKey(id));
         await context.SaveAsync(cancellationToken);
         return true;
     }
 
     /// <summary>
-    /// 更新账户最后使用时间
+    ///     更新账户最后使用时间
     /// </summary>
     public async Task<bool> UpdateLastUsedAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -257,7 +263,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 设置账户限流状态
+    ///     设置账户限流状态
     /// </summary>
     public async Task<bool> SetRateLimitAsync(string id, DateTime rateLimitedUntil, string? error = null,
         CancellationToken cancellationToken = default)
@@ -268,11 +274,12 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 .SetProperty(a => a.LastError, error)
                 .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
+        memoryCache.Remove(GetAccountCacheKey(id));
         return true;
     }
 
     /// <summary>
-    /// 恢复限流账户状态
+    ///     恢复限流账户状态
     /// </summary>
     public async Task<bool> RecoverRateLimitedAccountAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -284,11 +291,12 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 .SetProperty(a => a.LastError, (string?)null)
                 .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
+        memoryCache.Remove(GetAccountCacheKey(id));
         return rowsAffected > 0;
     }
 
     /// <summary>
-    /// 批量恢复已过期的限流账户
+    ///     批量恢复已过期的限流账户
     /// </summary>
     public async Task<int> RecoverExpiredRateLimitedAccountsAsync(CancellationToken cancellationToken = default)
     {
@@ -302,16 +310,13 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 .SetProperty(a => a.LastError, (string?)null)
                 .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
-        if (rowsAffected > 0)
-        {
-            logger.LogInformation("🔄 自动恢复了 {Count} 个已过期的限流账户", rowsAffected);
-        }
+        if (rowsAffected > 0) logger.LogInformation("🔄 自动恢复了 {Count} 个已过期的限流账户", rowsAffected);
 
         return rowsAffected;
     }
 
     /// <summary>
-    /// 获取可用的账户（启用且未限流）
+    ///     获取可用的账户（启用且未限流）
     /// </summary>
     public async Task<List<Accounts>> GetAvailableAccountsAsync(string? platform = null,
         CancellationToken cancellationToken = default)
@@ -322,10 +327,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                         x.Status == "active" &&
                         (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now));
 
-        if (!string.IsNullOrEmpty(platform))
-        {
-            query = query.Where(x => x.Platform == platform);
-        }
+        if (!string.IsNullOrEmpty(platform)) query = query.Where(x => x.Platform == platform);
 
         return await query
             .OrderBy(x => x.Priority)
@@ -334,7 +336,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 根据算法获取一个可用账户
+    ///     根据算法获取一个可用账户
     /// </summary>
     /// <param name="apiKeyValue">API Key值</param>
     /// <param name="sessionHash">会话哈希</param>
@@ -347,6 +349,35 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         try
         {
+            // 如果提供了绑定账户则只使用该账户
+            if (!string.IsNullOrEmpty(apiKeyValue.DefaultAccountId))
+            {
+                var boundAccount = await GetAccountByIdAsync(apiKeyValue.DefaultAccountId, cancellationToken);
+                if (boundAccount != null && await IsAccountAvailableAsync(boundAccount, cancellationToken) &&
+                    await DoesAccountSupportModelAsync(boundAccount, requestedModel, cancellationToken))
+                {
+                    logger.LogInformation(
+                        "🎯 使用API Key绑定的默认账户: {AccountName} ({AccountId}) for API key {ApiKeyName}",
+                        boundAccount.Name, boundAccount.Id, apiKeyValue.Name);
+
+                    await UpdateLastUsedAsync(boundAccount.Id, cancellationToken);
+                    return boundAccount;
+                }
+
+                var reason = boundAccount == null
+                    ? "账户不存在"
+                    : !await IsAccountAvailableAsync(boundAccount, cancellationToken)
+                        ? "账户不可用"
+                        : !await DoesAccountSupportModelAsync(boundAccount, requestedModel, cancellationToken)
+                            ? "不支持请求的模型"
+                            : "未知原因";
+
+                logger.LogWarning("⚠️ API Key绑定的默认账户 {AccountId} 不可用 ({Reason})，回退到账户池",
+                    apiKeyValue.DefaultAccountId, reason);
+
+                throw new InvalidOperationException($"API Key绑定的默认账户不可用: {reason}");
+            }
+
             // 1. 检查API Key的新绑定账户系统（最高优先级）
             var apiKeyBoundAccountIds = apiKeyValue.GetBoundAccountIds();
             if (apiKeyBoundAccountIds.Any())
@@ -399,10 +430,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                     await UpdateLastUsedAsync(boundAccount.Id, cancellationToken);
                     return boundAccount;
                 }
-                else
-                {
-                    logger.LogWarning("⚠️ 绑定的Claude OAuth账户 {AccountId} 不可用，回退到账户池", apiKeyValue.ClaudeAccountId);
-                }
+
+                logger.LogWarning("⚠️ 绑定的Claude OAuth账户 {AccountId} 不可用，回退到账户池", apiKeyValue.ClaudeAccountId);
             }
 
             // 4. 检查Claude Console账户绑定（向后兼容）
@@ -420,11 +449,9 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                     await UpdateLastUsedAsync(boundConsoleAccount.Id, cancellationToken);
                     return boundConsoleAccount;
                 }
-                else
-                {
-                    logger.LogWarning("⚠️ 绑定的Claude Console账户 {AccountId} 不可用，回退到账户池",
-                        apiKeyValue.ClaudeConsoleAccountId);
-                }
+
+                logger.LogWarning("⚠️ 绑定的Claude Console账户 {AccountId} 不可用，回退到账户池",
+                    apiKeyValue.ClaudeConsoleAccountId);
             }
 
             // 5. 如果有会话哈希，检查是否有已映射的账户
@@ -493,23 +520,20 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 检查账户是否可用
+    ///     检查账户是否可用
     /// </summary>
     private async Task<bool> IsAccountAvailableAsync(Accounts account, CancellationToken cancellationToken = default)
     {
         // 刷新账户状态以获取最新信息
         var latestAccount = await GetAccountByIdAsync(account.Id, cancellationToken);
-        if (latestAccount == null)
-        {
-            return false;
-        }
+        if (latestAccount == null) return false;
 
         return latestAccount is { IsEnabled: true, Status: "active" } &&
                (latestAccount.RateLimitedUntil == null || latestAccount.RateLimitedUntil < DateTime.Now);
     }
 
     /// <summary>
-    /// 获取所有可用账户（包含模型过滤）
+    ///     获取所有可用账户（包含模型过滤）
     /// </summary>
     private async Task<List<Accounts>> GetAllAvailableAccountsAsync(ApiKey apiKey, string? requestedModel,
         bool requestStream,
@@ -517,8 +541,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         var query = context.Accounts
             .AsNoTracking()
-            .Where(x => x.IsEnabled &&
-                x.Status == "active" || x.Status == "rate_limited");
+            .Where(x => (x.IsEnabled &&
+                         x.Status == "active") || x.Status == "rate_limited");
 
         query = query.Where(x =>
             x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai" ||
@@ -527,28 +551,25 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         var accounts = await query.ToListAsync(cancellationToken);
 
         accounts = accounts.Where(x =>
-            (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now)).ToList();
+            x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now).ToList();
 
-        if (!requestStream)
-        {
-            accounts = accounts.Where(x => x.OpenAiOauth == null).ToList();
-        }
+        if (!requestStream) accounts = accounts.Where(x => x.OpenAiOauth == null).ToList();
 
         // 如果指定了模型，进一步过滤支持该模型的账户
         if (!string.IsNullOrEmpty(requestedModel))
         {
             accounts = accounts.Where(account => DoesAccountSupportModel(account, requestedModel))
                 .ToList();
-            
+
             // 判断如果超过1个，优先选择有模型映射的账户
             if (accounts.Count > 1)
             {
                 // 将有模型映射的账户排在前面
                 var modelMappedAccounts = accounts.Where(a => a.SupportedModels != null && a.SupportedModels.Any(m =>
                     m.Split(':', 2)[0].Trim().Equals(requestedModel, StringComparison.OrdinalIgnoreCase))).ToList();
-                
+
                 var otherAccounts = accounts.Except(modelMappedAccounts).ToList();
-                
+
                 // 重新组合：有映射的在前，其他的在后
                 accounts = modelMappedAccounts.Concat(otherAccounts).ToList();
             }
@@ -558,15 +579,12 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 检查账户是否支持指定模型
+    ///     检查账户是否支持指定模型
     /// </summary>
     private bool DoesAccountSupportModel(Accounts account, string model)
     {
         // 如果没有配置支持的模型，则认为支持所有模型
-        if (account.SupportedModels == null || account.SupportedModels.Count == 0)
-        {
-            return true;
-        }
+        if (account.SupportedModels == null || account.SupportedModels.Count == 0) return true;
 
         try
         {
@@ -578,10 +596,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 {
                     var fromModel = parts[0].Trim();
                     // 检查请求的模型是否匹配映射中的源模型或目标模型
-                    if (string.Equals(fromModel, model, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
+                    if (string.Equals(fromModel, model, StringComparison.OrdinalIgnoreCase)) return true;
                 }
                 // 也支持直接的模型名匹配（向后兼容）
                 else if (string.Equals(mapping.Trim(), model, StringComparison.OrdinalIgnoreCase))
@@ -614,11 +629,9 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         {
             var boundAccounts = accounts.Where(a => a.SupportedModels != null && a.SupportedModels.Any(m =>
                 m.Split(':', 2)[0].Trim().Equals(requestedModel, StringComparison.OrdinalIgnoreCase))).ToList();
-            if (boundAccounts.Any())
-            {
-                accounts = boundAccounts;
-            }
+            if (boundAccounts.Any()) accounts = boundAccounts;
         }
+
         return accounts
             .Select(account => new
             {
@@ -663,7 +676,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 获取会话映射的账户
+    ///     获取会话映射的账户
     /// </summary>
     private async Task<Accounts?> GetSessionMappingAsync(string sessionHash,
         CancellationToken cancellationToken = default)
@@ -671,15 +684,13 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         var cacheKey = $"session_mapping_{sessionHash}";
 
         if (memoryCache.TryGetValue(cacheKey, out string? accountId) && !string.IsNullOrEmpty(accountId))
-        {
             return await GetAccountByIdAsync(accountId, cancellationToken);
-        }
 
         return null;
     }
 
     /// <summary>
-    /// 设置会话映射
+    ///     设置会话映射
     /// </summary>
     private async Task SetSessionMappingAsync(string sessionHash, Accounts account,
         CancellationToken cancellationToken = default)
@@ -699,7 +710,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 删除会话映射
+    ///     删除会话映射
     /// </summary>
     private async Task DeleteSessionMappingAsync(string sessionHash)
     {
@@ -710,7 +721,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 获取有效的访问令牌
+    ///     获取有效的访问令牌
     /// </summary>
     /// <param name="account">账户信息</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -730,7 +741,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                     var now = DateTimeOffset.Now.ToUnixTimeSeconds();
                     // 检查ExpiresAt是否在有效范围内（毫秒时间戳）
                     var isExpired = oauth.ExpiresAt == 0 ||
-                                    (oauth.ExpiresAt > 0 && now >= (oauth.ExpiresAt - 120)); // 60秒提前刷新
+                                    (oauth.ExpiresAt > 0 && now >= oauth.ExpiresAt - 120); // 60秒提前刷新
                     if (isExpired)
                     {
                         logger.LogInformation("🔄 访问令牌即将过期，尝试刷新 for account {AccountId}", account.Id);
@@ -738,11 +749,12 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                         try
                         {
                             // 实现token刷新逻辑
-                            var refreshedToken = await RefreshClaudeOAuthTokenAsync(account, cancellationToken);
-                            if (!string.IsNullOrEmpty(refreshedToken))
+                            var newAccount =
+                                await RefreshClaudeOAuthTokenAsync(account, cancellationToken);
+                            if (!string.IsNullOrEmpty(newAccount?.ClaudeAiOauth?.AccessToken))
                             {
                                 logger.LogInformation("✅ 成功刷新访问令牌 for account {AccountId}", account.Id);
-                                return refreshedToken;
+                                return newAccount.ClaudeAiOauth.AccessToken;
                             }
                         }
                         catch (Exception refreshError)
@@ -810,26 +822,24 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 刷新Claude OAuth访问令牌
+    ///     刷新Claude OAuth访问令牌
     /// </summary>
-    private async Task<string> RefreshClaudeOAuthTokenAsync(Accounts account,
+    public async Task<Accounts?> RefreshClaudeOAuthTokenAsync(Accounts account,
         CancellationToken cancellationToken = default)
     {
-        if (account.ClaudeAiOauth?.RefreshToken == null)
-        {
-            throw new InvalidOperationException("没有可用的刷新令牌");
-        }
+        if (string.IsNullOrEmpty(account.ClaudeAiOauth?.RefreshToken)) throw new InvalidOperationException("没有可用的刷新令牌");
 
         try
         {
-            using var httpClient = new HttpClient();
+            var client = HttpClientFactory.GetHttpClient("https://claude.ai/", account.Proxy);
 
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://console.anthropic.com/v1/oauth/token");
             // 设置请求头
-            httpClient.DefaultRequestHeaders.Add("User-Agent", "claude-cli/1.0.65 (external, cli)");
-            httpClient.DefaultRequestHeaders.Add("Accept", "application/json, text/plain, */*");
-            httpClient.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
-            httpClient.DefaultRequestHeaders.Add("Referer", "https://claude.ai/");
-            httpClient.DefaultRequestHeaders.Add("Origin", "https://claude.ai");
+            request.Headers.Add("User-Agent", "claude-cli/1.0.65 (external, cli)");
+            request.Headers.Add("Accept", "application/json, text/plain, */*");
+            request.Headers.Add("Accept-Language", "en-US,en;q=0.9");
+            request.Headers.Add("Referer", "https://claude.ai/");
+            request.Headers.Add("Origin", "https://claude.ai");
 
             var requestData = new
             {
@@ -838,11 +848,11 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e" // Claude OAuth客户端ID
             };
 
-            var json = JsonSerializer.Serialize(requestData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            request.Content =
+                new StringContent(JsonSerializer.Serialize(requestData, ThorJsonSerializer.DefaultOptions),
+                    Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PostAsync("https://console.anthropic.com/v1/oauth/token", content,
-                cancellationToken);
+            var response = await client.SendAsync(request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
@@ -862,7 +872,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                     account.ClaudeAiOauth.RefreshToken = newRefreshToken;
                     account.ClaudeAiOauth.ExpiresAt = DateTimeOffset.Now.AddSeconds(expiresIn).ToUnixTimeSeconds();
 
-                    context.Accounts.Where(x => x.Id == account.Id)
+                    await context.Accounts.Where(x => x.Id == account.Id)
                         .ExecuteUpdateAsync(x => x.SetProperty(a => a.ClaudeAiOauth, account.ClaudeAiOauth)
                                 .SetProperty(x => x.ModifiedAt, DateTime.Now)
                                 .SetProperty(x => x.LastUsedAt, DateTime.Now)
@@ -870,8 +880,10 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                                 .SetProperty(x => x.UsageCount, x => x.UsageCount + 1),
                             cancellationToken);
 
+                    memoryCache.Remove(GetAccountCacheKey(account.Id));
+
                     logger.LogInformation("🔄 成功刷新Claude OAuth令牌 for account {AccountId}", account.Id);
-                    return newAccessToken;
+                    return account;
                 }
             }
             else
@@ -892,7 +904,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 更新账户最后使用时间
+    ///     更新账户最后使用时间
     /// </summary>
     private async Task UpdateAccountLastUsedAsync(string accountId, CancellationToken cancellationToken = default)
     {
@@ -903,7 +915,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     }
 
     /// <summary>
-    /// 获取用户绑定的账户（用于API Key选择）
+    ///     获取用户绑定的账户（用于API Key选择）
     /// </summary>
     private async Task<List<Accounts>> GetUserBoundAccountsForApiKeyAsync(ApiKey apiKeyValue,
         string? requestedModel,
@@ -934,24 +946,19 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
 
         // 如果指定了模型，进一步过滤支持该模型的账户
         if (!string.IsNullOrEmpty(requestedModel))
-        {
             accounts = accounts.Where(account => DoesAccountSupportModel(account, requestedModel)).ToList();
-        }
 
         return accounts;
     }
 
     /// <summary>
-    /// 异步检查账户是否支持指定模型
+    ///     异步检查账户是否支持指定模型
     /// </summary>
     private async Task<bool> DoesAccountSupportModelAsync(Accounts account,
         string? model,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(model))
-        {
-            return true;
-        }
+        if (string.IsNullOrEmpty(model)) return true;
 
         return await Task.FromResult(DoesAccountSupportModel(account, model));
     }

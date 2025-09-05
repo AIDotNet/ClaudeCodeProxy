@@ -1,4 +1,5 @@
 ﻿using ClaudeCodeProxy.Abstraction;
+using ClaudeCodeProxy.Abstraction.Anthropic;
 using ClaudeCodeProxy.Abstraction.Chats;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Core.AI;
@@ -9,13 +10,13 @@ using ClaudeCodeProxy.Host.Helper;
 using Making.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;
-using Thor.Abstractions.Anthropic;
 
 namespace ClaudeCodeProxy.Host.Services.AI;
 
 [MiniApi(Route = "/v1/messages", Tags = "Messages")]
-public partial class MessageService(
+public class MessageService(
     AccountsService accountsService,
+    ILogger<MessageService> logger,
     SessionHelper sessionHelper)
 {
     public async Task HandleAsync(
@@ -34,20 +35,22 @@ public partial class MessageService(
         {
             httpContext.Response.StatusCode = 401; // Unauthorized
             await httpContext.Response.WriteAsync("Unauthorized API Key",
-                cancellationToken: httpContext.RequestAborted);
+                httpContext.RequestAborted);
             return;
         }
 
-        var apiKeyValue = await keyService.GetApiKeyWithRefreshedUsageAsync(apiKey, httpContext.RequestAborted);
+        var apiKeyValue = await keyService.GetApiKeyWithRefreshedUsageAsync(apiKey, httpContext.RequestAborted)
+            .ConfigureAwait(false);
 
         if (apiKeyValue == null)
         {
             httpContext.Response.StatusCode = 401; // Unauthorized
             await httpContext.Response.WriteAsJsonAsync(new
-            {
-                message = "API Key不存在或已被禁用",
-                code = "401"
-            }, cancellationToken: httpContext.RequestAborted);
+                {
+                    message = "API Key不存在或已被禁用",
+                    code = "401"
+                }, httpContext.RequestAborted)
+                .ConfigureAwait(false);
             return;
         }
 
@@ -58,7 +61,7 @@ public partial class MessageService(
             {
                 message = "Unauthorized",
                 code = "403"
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
             return;
         }
 
@@ -69,7 +72,7 @@ public partial class MessageService(
             {
                 message = "当前API Key没有访问Claude服务的权限",
                 code = "403"
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
             return;
         }
 
@@ -80,7 +83,7 @@ public partial class MessageService(
             {
                 message = "当前API Key没有使用该模型的权限",
                 code = "403"
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
             return;
         }
 
@@ -94,7 +97,7 @@ public partial class MessageService(
             {
                 message = $"模型 {request.Model} 已被管理员禁用",
                 code = "403"
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
             return;
         }
 
@@ -127,7 +130,7 @@ public partial class MessageService(
                         currency = "USD"
                     }
                 }
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
             return;
         }
 
@@ -152,14 +155,11 @@ public partial class MessageService(
                     type = "rate_limit_error",
                     code = "429"
                 }
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
             return;
         }
 
-        if (!string.IsNullOrEmpty(apiKeyValue.Model))
-        {
-            request.Model = apiKeyValue.Model;
-        }
+        if (!string.IsNullOrEmpty(apiKeyValue.Model)) request.Model = apiKeyValue.Model;
 
         var sessionHash = sessionHelper.GenerateSessionHash(request);
 
@@ -172,8 +172,6 @@ public partial class MessageService(
         var mappedModel = MapRequestedModel(request.Model, account);
         if (!string.IsNullOrEmpty(mappedModel) && mappedModel != request.Model)
         {
-            // 记录模型映射日志
-            var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
             logger.LogInformation("🔄 模型映射: {OriginalModel} -> {MappedModel} for account {AccountName}",
                 request.Model, mappedModel, account?.Name);
             request.Model = mappedModel;
@@ -189,7 +187,7 @@ public partial class MessageService(
             requestStartTime,
             "claude",
             httpContext.Connection.RemoteIpAddress?.ToString(),
-            httpContext.Request.Headers["User-Agent"].FirstOrDefault(),
+            httpContext.Request.Headers.UserAgent.FirstOrDefault(),
             Guid.NewGuid().ToString(),
             account?.Id,
             account?.Name,
@@ -218,16 +216,12 @@ public partial class MessageService(
         else if (account?.IsOpenAI == true)
         {
             if (!string.IsNullOrEmpty(account?.OpenAiOauth?.AccessToken))
-            {
-                await HandleOpenAIResponsesAsync(httpContext, request, apiKeyValue, account, requestLog.Id,
+                await HandleOpenAiResponsesAsync(httpContext, request, apiKeyValue, account, requestLog.Id,
                     requestLogService,
                     httpContext.RequestAborted);
-            }
             else
-            {
                 await HandleOpenAiAsync(httpContext, request, apiKeyValue, account, requestLog.Id, requestLogService,
                     httpContext.RequestAborted);
-            }
         }
         else
         {
@@ -237,11 +231,11 @@ public partial class MessageService(
             {
                 message = "当前API Key没有访问Claude服务的权限",
                 code = "403"
-            }, cancellationToken: httpContext.RequestAborted);
+            }, httpContext.RequestAborted);
         }
     }
 
-    private async Task HandleOpenAIResponsesAsync(
+    private async Task HandleOpenAiResponsesAsync(
         HttpContext httpContext,
         AnthropicInput request,
         ApiKey apiKeyValue,
@@ -258,15 +252,15 @@ public partial class MessageService(
         try
         {
             // 准备请求头和代理配置
-            var headers = new Dictionary<string, string>()
+            var headers = new Dictionary<string, string>
             {
-                { "Authorization", "Bearer " + accessToken },
+                { "Authorization", "Bearer " + accessToken }
             };
 
             var proxyConfig = account?.Proxy;
 
             // 调用OpenAI Responses服务（转换为Claude格式输出）
-            ClaudeChatCompletionDto response;
+            AnthropicChatCompletionDto response;
             // 从response中提取实际的token usage信息
             var inputTokens = 0;
             var outputTokens = 0;
@@ -275,17 +269,14 @@ public partial class MessageService(
 
             var options = new ThorPlatformOptions();
 
-            if (string.IsNullOrEmpty(account?.ApiUrl))
-            {
-                options.Address = "https://chatgpt.com/backend-api/codex";
-            }
+            if (string.IsNullOrEmpty(account?.ApiUrl)) options.Address = "https://chatgpt.com/backend-api/codex";
 
             if (request.Stream)
             {
                 // 是否第一次输出
-                bool isFirst = true;
+                var isFirst = true;
 
-                await foreach (var (eventName, value, item) in anthropicResponsesService.StreamChatCompletionsAsync(
+                await foreach (var (eventName, item) in anthropicResponsesService.StreamChatCompletionsAsync(
                                    request,
                                    headers, proxyConfig, options, cancellationToken))
                 {
@@ -297,32 +288,24 @@ public partial class MessageService(
                         isFirst = false;
                     }
 
-                    if (item?.Usage is { input_tokens: > 0 } ||
-                        item?.message?.Usage?.input_tokens > 0)
-                    {
-                        inputTokens = item.Usage?.input_tokens ?? item?.message?.Usage?.input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { InputTokens: > 0 } ||
+                        item?.Message?.Usage?.InputTokens > 0)
+                        inputTokens = item.Usage?.InputTokens ?? item?.Message?.Usage?.InputTokens ?? 0;
 
-                    if (item?.Usage is { output_tokens: > 0 } || item?.message?.Usage?.output_tokens > 0)
-                    {
-                        outputTokens = (item.Usage?.output_tokens ?? item?.message?.Usage?.output_tokens) ?? 0;
-                    }
+                    if (item?.Usage is { OutputTokens: > 0 } || item?.Message?.Usage?.OutputTokens > 0)
+                        outputTokens = (item.Usage?.OutputTokens ?? item?.Message?.Usage?.OutputTokens) ?? 0;
 
-                    if (item?.Usage is { cache_creation_input_tokens: > 0 } ||
-                        item?.message?.Usage?.cache_creation_input_tokens > 0)
-                    {
-                        cacheCreateTokens += item.Usage?.cache_creation_input_tokens ??
-                                             item?.message?.Usage?.cache_creation_input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { CacheCreationInputTokens: > 0 } ||
+                        item?.Message?.Usage?.CacheCreationInputTokens > 0)
+                        cacheCreateTokens += item.Usage?.CacheCreationInputTokens ??
+                                             item?.Message?.Usage?.CacheCreationInputTokens ?? 0;
 
-                    if (item?.Usage is { cache_read_input_tokens: > 0 } ||
-                        item?.message?.Usage?.cache_read_input_tokens > 0)
-                    {
-                        cacheReadTokens += item.Usage?.cache_read_input_tokens ??
-                                           item.message?.Usage?.cache_read_input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { CacheReadInputTokens: > 0 } ||
+                        item?.Message?.Usage?.CacheReadInputTokens > 0)
+                        cacheReadTokens += item.Usage?.CacheReadInputTokens ??
+                                           item.Message?.Usage?.CacheReadInputTokens ?? 0;
 
-                    await httpContext.WriteAsEventStreamDataAsync(eventName, value);
+                    await httpContext.WriteAsEventStreamDataAsync(eventName, item);
                 }
             }
             else
@@ -335,10 +318,10 @@ public partial class MessageService(
                 // 从非流式响应中提取Usage信息
                 if (response?.Usage != null)
                 {
-                    inputTokens = response.Usage.input_tokens ?? 0;
-                    outputTokens = response.Usage.output_tokens ?? 0;
-                    cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
-                    cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
+                    inputTokens = response.Usage.InputTokens ?? 0;
+                    outputTokens = response.Usage.OutputTokens ?? 0;
+                    cacheCreateTokens = response.Usage.CacheCreationInputTokens ?? 0;
+                    cacheReadTokens = response.Usage.CacheReadInputTokens ?? 0;
 
                     // 记录Usage提取日志
                     var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
@@ -347,7 +330,7 @@ public partial class MessageService(
                         inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
                 }
 
-                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
+                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken);
             }
 
             // 计算费用（这里需要根据实际的定价模型来计算）
@@ -395,9 +378,9 @@ public partial class MessageService(
             // 完成请求日志记录（限流失败）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
-                status: "rate_limited",
-                errorMessage: rateLimitEx.Message,
-                httpStatusCode: 429,
+                "rate_limited",
+                rateLimitEx.Message,
+                429,
                 cancellationToken: cancellationToken);
 
             // 返回429限流错误 - 增强版，包含替代账户信息
@@ -430,7 +413,7 @@ public partial class MessageService(
                             service_type = "openai_responses"
                         }
                     }
-                }, cancellationToken: cancellationToken);
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -452,7 +435,7 @@ public partial class MessageService(
                             service_type = "openai_responses"
                         }
                     }
-                }, cancellationToken: cancellationToken);
+                }, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -460,9 +443,9 @@ public partial class MessageService(
             // 完成请求日志记录（失败）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
-                status: "error",
-                errorMessage: ex.Message,
-                httpStatusCode: 500,
+                "error",
+                ex.Message,
+                500,
                 cancellationToken: cancellationToken);
 
             // 记录详细错误信息
@@ -485,7 +468,7 @@ public partial class MessageService(
                         account_id = account?.Id
                     }
                 }
-            }, cancellationToken: cancellationToken);
+            }, cancellationToken);
         }
     }
 
@@ -506,15 +489,15 @@ public partial class MessageService(
         try
         {
             // 准备请求头和代理配置
-            var headers = new Dictionary<string, string>()
+            var headers = new Dictionary<string, string>
             {
-                { "Authorization", "Bearer " + accessToken },
+                { "Authorization", "Bearer " + accessToken }
             };
 
             var proxyConfig = account?.Proxy;
 
             // 调用真实的聊天完成服务
-            ClaudeChatCompletionDto response;
+            AnthropicChatCompletionDto response;
             // 从response中提取实际的token usage信息
             var inputTokens = 0;
             var outputTokens = 0;
@@ -523,17 +506,17 @@ public partial class MessageService(
 
             // 添加配额响应头
             AddQuotaHeaders(httpContext, apiKeyValue);
-            
+
             if (request.Stream)
             {
                 // 是否第一次输出
-                bool isFirst = true;
+                var isFirst = true;
 
                 await foreach (var (eventName, value, item) in chatCompletionsService.StreamChatCompletionsAsync(
                                    request,
-                                   headers, proxyConfig, new ThorPlatformOptions()
+                                   headers, proxyConfig, new ThorPlatformOptions
                                    {
-                                       Address = account?.ApiUrl ?? "https://api.anthropic.com/",
+                                       Address = account?.ApiUrl ?? "https://api.anthropic.com/"
                                    }, cancellationToken))
                 {
                     if (isFirst)
@@ -544,30 +527,22 @@ public partial class MessageService(
                         isFirst = false;
                     }
 
-                    if (item?.Usage is { input_tokens: > 0 } ||
-                        item?.message?.Usage?.input_tokens > 0)
-                    {
-                        inputTokens = item.Usage?.input_tokens ?? item?.message?.Usage?.input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { InputTokens: > 0 } ||
+                        item?.Message?.Usage?.InputTokens > 0)
+                        inputTokens = item.Usage?.InputTokens ?? item?.Message?.Usage?.InputTokens ?? 0;
 
-                    if (item?.Usage is { output_tokens: > 0 } || item?.message?.Usage?.output_tokens > 0)
-                    {
-                        outputTokens = (item.Usage?.output_tokens ?? item?.message?.Usage?.output_tokens) ?? 0;
-                    }
+                    if (item?.Usage is { OutputTokens: > 0 } || item?.Message?.Usage?.OutputTokens > 0)
+                        outputTokens = (item.Usage?.OutputTokens ?? item?.Message?.Usage?.OutputTokens) ?? 0;
 
-                    if (item?.Usage is { cache_creation_input_tokens: > 0 } ||
-                        item?.message?.Usage?.cache_creation_input_tokens > 0)
-                    {
-                        cacheCreateTokens += item.Usage?.cache_creation_input_tokens ??
-                                             item?.message?.Usage?.cache_creation_input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { CacheCreationInputTokens: > 0 } ||
+                        item?.Message?.Usage?.CacheCreationInputTokens > 0)
+                        cacheCreateTokens += item.Usage?.CacheCreationInputTokens ??
+                                             item?.Message?.Usage?.CacheCreationInputTokens ?? 0;
 
-                    if (item?.Usage is { cache_read_input_tokens: > 0 } ||
-                        item?.message?.Usage?.cache_read_input_tokens > 0)
-                    {
-                        cacheReadTokens += item.Usage?.cache_read_input_tokens ??
-                                           item.message?.Usage?.cache_read_input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { CacheReadInputTokens: > 0 } ||
+                        item?.Message?.Usage?.CacheReadInputTokens > 0)
+                        cacheReadTokens += item.Usage?.CacheReadInputTokens ??
+                                           item.Message?.Usage?.CacheReadInputTokens ?? 0;
 
 
                     await httpContext.WriteAsEventStreamDataAsync(eventName, value);
@@ -578,19 +553,19 @@ public partial class MessageService(
             {
                 // 非流式响应
                 response = await chatCompletionsService.ChatCompletionsAsync(request, headers, proxyConfig,
-                    new ThorPlatformOptions()
+                    new ThorPlatformOptions
                     {
-                        Address = account.ApiUrl,
+                        Address = account.ApiUrl
                     },
                     cancellationToken);
 
                 // 从非流式响应中提取Usage信息
                 if (response?.Usage != null)
                 {
-                    inputTokens = response.Usage.input_tokens ?? 0;
-                    outputTokens = response.Usage.output_tokens ?? 0;
-                    cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
-                    cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
+                    inputTokens = response.Usage.InputTokens ?? 0;
+                    outputTokens = response.Usage.OutputTokens ?? 0;
+                    cacheCreateTokens = response.Usage.CacheCreationInputTokens ?? 0;
+                    cacheReadTokens = response.Usage.CacheReadInputTokens ?? 0;
 
                     // 记录Usage提取日志
                     var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
@@ -599,7 +574,7 @@ public partial class MessageService(
                         inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
                 }
 
-                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
+                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken);
             }
 
             // 计算费用（这里需要根据实际的定价模型来计算）
@@ -625,7 +600,6 @@ public partial class MessageService(
             // 扣除钱包余额
             var walletService = httpContext.RequestServices.GetRequiredService<WalletService>();
             await walletService.DeductWalletAsync(apiKeyValue.UserId, cost, $"API调用费用 - {request.Model}", requestLogId);
-
         }
         catch (RateLimitException rateLimitEx)
         {
@@ -645,9 +619,9 @@ public partial class MessageService(
             // 完成请求日志记录（限流失败）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
-                status: "rate_limited",
-                errorMessage: rateLimitEx.Message,
-                httpStatusCode: 429,
+                "rate_limited",
+                rateLimitEx.Message,
+                429,
                 cancellationToken: cancellationToken);
 
             // 返回429限流错误 - 增强版，包含替代账户信息
@@ -679,7 +653,7 @@ public partial class MessageService(
                             alternative_accounts = rateLimitInfo.AlternativeAccounts
                         }
                     }
-                }, cancellationToken: cancellationToken);
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -700,7 +674,7 @@ public partial class MessageService(
                             account_id = account?.Id
                         }
                     }
-                }, cancellationToken: cancellationToken);
+                }, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -708,9 +682,9 @@ public partial class MessageService(
             // 完成请求日志记录（失败）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
-                status: "error",
-                errorMessage: ex.Message,
-                httpStatusCode: 500,
+                "error",
+                ex.Message,
+                500,
                 cancellationToken: cancellationToken);
 
             httpContext.Response.StatusCode = 500;
@@ -723,12 +697,12 @@ public partial class MessageService(
                     type = "server_error",
                     code = "500"
                 }
-            }, cancellationToken: cancellationToken);
+            }, cancellationToken);
         }
     }
 
     /// <summary>
-    /// 处理系统提示词 - 如果不是真实的Claude Code请求，需要添加Claude Code系统提示词
+    ///     处理系统提示词 - 如果不是真实的Claude Code请求，需要添加Claude Code系统提示词
     /// </summary>
     /// <param name="request">AnthropicInput请求</param>
     /// <param name="httpContext">HTTP上下文</param>
@@ -744,7 +718,7 @@ public partial class MessageService(
             {
                 Type = "text",
                 Text = PromptConstant.ClaudeCodeSystemPrompt,
-                CacheControl = new AnthropicCacheControl { Type = "ephemeral" }
+                CacheControl = new AnthropicCacheControls { Type = "ephemeral" }
             };
 
             if (request.SystemCalculated != null)
@@ -760,13 +734,9 @@ public partial class MessageService(
 
                     // 如果用户的提示词与Claude Code提示词相同，只保留一个
                     if (request.System.Trim() == PromptConstant.ClaudeCodeSystemPrompt)
-                    {
                         request.Systems = new List<AnthropicMessageContent> { claudeCodePrompt };
-                    }
                     else
-                    {
                         request.Systems = new List<AnthropicMessageContent> { claudeCodePrompt, userSystemPrompt };
-                    }
 
                     request.System = null;
                 }
@@ -802,17 +772,17 @@ public partial class MessageService(
 
             request.System = null;
 
-            request.Systems.Insert(0, new AnthropicMessageContent
+            request.Systems?.Insert(0, new AnthropicMessageContent
             {
                 Type = "text",
                 Text = PromptConstant.ClaudeCliSystemPrompt,
-                CacheControl = new AnthropicCacheControl { Type = "ephemeral" }
+                CacheControl = new AnthropicCacheControls { Type = "ephemeral" }
             });
         }
     }
 
     /// <summary>
-    /// 处理Claude请求
+    ///     处理Claude请求
     /// </summary>
     private async Task HandleClaudeAsync(
         HttpContext httpContext,
@@ -828,13 +798,16 @@ public partial class MessageService(
 
         var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
 
+        var refreshed = 0;
+        refreshed:
+
         // 处理系统提示词 - 如果不是真实的Claude Code请求，需要添加Claude Code系统提示词
         ProcessSystemPrompts(request, httpContext);
 
         try
         {
             // 准备请求头和代理配置
-            var headers = new Dictionary<string, string>()
+            var headers = new Dictionary<string, string>
             {
                 { "Authorization", "Bearer " + accessToken },
                 { "anthropic-version", EnvHelper.ApiVersion }
@@ -850,9 +823,7 @@ public partial class MessageService(
                         header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
                         header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) ||
                         header.Key.Equals("x-api-key", StringComparison.OrdinalIgnoreCase))
-                    {
                         continue;
-                    }
 
                     headers[header.Key] = header.Value.ToString();
                 }
@@ -883,7 +854,6 @@ public partial class MessageService(
             var proxyConfig = account?.Proxy;
 
             // 调用真实的聊天完成服务
-            ClaudeChatCompletionDto response;
             // 从response中提取实际的token usage信息
             var inputTokens = 0;
             var outputTokens = 0;
@@ -896,13 +866,13 @@ public partial class MessageService(
             if (request.Stream)
             {
                 // 是否第一次输出
-                bool isFirst = true;
+                var isFirst = true;
 
-                await foreach (var (eventName, value, item) in chatCompletionsService.StreamChatCompletionsAsync(
+                await foreach (var (eventName, item) in chatCompletionsService.StreamChatCompletionsAsync(
                                    request,
-                                   headers, proxyConfig, new ThorPlatformOptions()
+                                   headers, proxyConfig, new ThorPlatformOptions
                                    {
-                                       Address = account?.ApiUrl ?? "https://api.anthropic.com/",
+                                       Address = account?.ApiUrl ?? "https://api.anthropic.com/"
                                    }, cancellationToken))
                 {
                     if (isFirst)
@@ -913,53 +883,45 @@ public partial class MessageService(
                         isFirst = false;
                     }
 
-                    if (item?.Usage is { input_tokens: > 0 } ||
-                        item?.message?.Usage?.input_tokens > 0)
-                    {
-                        inputTokens = item.Usage?.input_tokens ?? item?.message?.Usage?.input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { InputTokens: > 0 } ||
+                        item?.Message?.Usage?.InputTokens > 0)
+                        inputTokens = item.Usage?.InputTokens ?? item?.Message?.Usage?.InputTokens ?? 0;
 
-                    if (item?.Usage is { output_tokens: > 0 } || item?.message?.Usage?.output_tokens > 0)
-                    {
-                        outputTokens = (item.Usage?.output_tokens ?? item?.message?.Usage?.output_tokens) ?? 0;
-                    }
+                    if (item?.Usage is { OutputTokens: > 0 } || item?.Message?.Usage?.OutputTokens > 0)
+                        outputTokens = (item.Usage?.OutputTokens ?? item?.Message?.Usage?.OutputTokens) ?? 0;
 
-                    if (item?.Usage is { cache_creation_input_tokens: > 0 } ||
-                        item?.message?.Usage?.cache_creation_input_tokens > 0)
-                    {
-                        cacheCreateTokens += item.Usage?.cache_creation_input_tokens ??
-                                             item?.message?.Usage?.cache_creation_input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { CacheCreationInputTokens: > 0 } ||
+                        item?.Message?.Usage?.CacheCreationInputTokens > 0)
+                        cacheCreateTokens += item.Usage?.CacheCreationInputTokens ??
+                                             item?.Message?.Usage?.CacheCreationInputTokens ?? 0;
 
-                    if (item?.Usage is { cache_read_input_tokens: > 0 } ||
-                        item?.message?.Usage?.cache_read_input_tokens > 0)
-                    {
-                        cacheReadTokens += item.Usage?.cache_read_input_tokens ??
-                                           item.message?.Usage?.cache_read_input_tokens ?? 0;
-                    }
+                    if (item?.Usage is { CacheReadInputTokens: > 0 } ||
+                        item?.Message?.Usage?.CacheReadInputTokens > 0)
+                        cacheReadTokens += item.Usage?.CacheReadInputTokens ??
+                                           item.Message?.Usage?.CacheReadInputTokens ?? 0;
 
 
-                    await httpContext.WriteAsEventStreamDataAsync(eventName, value);
+                    await httpContext.WriteAsEventStreamDataAsync(eventName, item);
                 }
             }
 
             else
             {
                 // 非流式响应
-                response = await chatCompletionsService.ChatCompletionsAsync(request, headers, proxyConfig,
-                    new ThorPlatformOptions()
+                var response = await chatCompletionsService.ChatCompletionsAsync(request, headers, proxyConfig,
+                    new ThorPlatformOptions
                     {
-                        Address = account.ApiUrl,
+                        Address = account.ApiUrl
                     },
                     cancellationToken);
 
                 // 从非流式响应中提取Usage信息
                 if (response?.Usage != null)
                 {
-                    inputTokens = response.Usage.input_tokens ?? 0;
-                    outputTokens = response.Usage.output_tokens ?? 0;
-                    cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
-                    cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
+                    inputTokens = response.Usage.InputTokens ?? 0;
+                    outputTokens = response.Usage.OutputTokens ?? 0;
+                    cacheCreateTokens = response.Usage.CacheCreationInputTokens ?? 0;
+                    cacheReadTokens = response.Usage.CacheReadInputTokens ?? 0;
 
                     // 记录Usage提取日志
                     var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
@@ -968,7 +930,8 @@ public partial class MessageService(
                         inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
                 }
 
-                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
+                await httpContext.Response.WriteAsJsonAsync(response, ThorJsonSerializer.DefaultOptions,
+                    cancellationToken);
             }
 
             // 计算费用（这里需要根据实际的定价模型来计算）
@@ -998,6 +961,39 @@ public partial class MessageService(
             // 检测并同步Claude API响应头中的限流信息
             await SyncRateLimitFromResponseHeaders(httpContext, account, cancellationToken);
         }
+        catch (UnauthorizedAccessException)
+        {
+            // 如果401，先判断是否oauth登录，如果是则先刷新token
+            if (account is { IsClaude: true, ClaudeAiOauth: not null })
+                try
+                {
+                    // 实现token刷新逻辑
+                    var newAccess = await accountsService.RefreshClaudeOAuthTokenAsync(account, cancellationToken);
+                    if (!string.IsNullOrEmpty(newAccess?.ClaudeAiOauth?.AccessToken))
+                    {
+                        account = newAccess;
+                        logger.LogInformation("🔄 Token刷新成功 for account {AccountId}", account.Id);
+                        if (refreshed >= 1)
+                        {
+                            logger.LogWarning(
+                                "⚠️ Token刷新已进行{RefreshCount}次，仍然失败，可能存在循环，请检查账户状态 for account {AccountId}",
+                                refreshed, account.Id);
+
+                            throw; // 避免无限刷新，直接抛出异常
+                        }
+
+                        refreshed++;
+                        goto refreshed;
+                    }
+
+                    logger.LogWarning("⚠️ Token刷新返回空字符串 for account {AccountId}", account.Id);
+                }
+                catch (Exception refreshError)
+                {
+                    logger.LogWarning("⚠️ Token刷新失败，使用现有token for account {AccountId}: {Error}",
+                        account.Id, refreshError.Message);
+                }
+        }
         catch (RateLimitException rateLimitEx)
         {
             // 处理限流异常 - 自动设置账户限流状态
@@ -1016,9 +1012,9 @@ public partial class MessageService(
             // 完成请求日志记录（限流失败）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
-                status: "rate_limited",
-                errorMessage: rateLimitEx.Message,
-                httpStatusCode: 429,
+                "rate_limited",
+                rateLimitEx.Message,
+                429,
                 cancellationToken: cancellationToken);
 
             // 返回429限流错误 - 增强版，包含替代账户信息
@@ -1050,7 +1046,7 @@ public partial class MessageService(
                             alternative_accounts = rateLimitInfo.AlternativeAccounts
                         }
                     }
-                }, cancellationToken: cancellationToken);
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -1071,7 +1067,7 @@ public partial class MessageService(
                             account_id = account?.Id
                         }
                     }
-                }, cancellationToken: cancellationToken);
+                }, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -1079,9 +1075,9 @@ public partial class MessageService(
             // 完成请求日志记录（失败）
             await requestLogService.CompleteRequestLogAsync(
                 requestLogId,
-                status: "error",
-                errorMessage: ex.Message,
-                httpStatusCode: 500,
+                "error",
+                ex.Message,
+                500,
                 cancellationToken: cancellationToken);
 
             httpContext.Response.StatusCode = 500;
@@ -1094,12 +1090,12 @@ public partial class MessageService(
                     type = "server_error",
                     code = "500"
                 }
-            }, cancellationToken: cancellationToken);
+            }, cancellationToken);
         }
     }
 
     /// <summary>
-    /// 计算Token费用
+    ///     计算Token费用
     /// </summary>
     private decimal CalculateTokenCost(string model, int inputTokens, int outputTokens,
         int cacheCreateTokens, int cacheReadTokens, HttpContext httpContext)
@@ -1119,7 +1115,7 @@ public partial class MessageService(
     }
 
     /// <summary>
-    /// 预估请求费用（基于输入内容的粗略估算）
+    ///     预估请求费用（基于输入内容的粗略估算）
     /// </summary>
     private decimal EstimateRequestCost(AnthropicInput request, HttpContext httpContext)
     {
@@ -1129,9 +1125,7 @@ public partial class MessageService(
             var estimatedInputTokens = 0;
 
             if (request.Messages != null)
-            {
                 foreach (var message in request.Messages)
-                {
                     if (message.Content is string textContent)
                     {
                         estimatedInputTokens += textContent.Length / 4; // 粗略估算
@@ -1139,14 +1133,9 @@ public partial class MessageService(
                     else if (message.Content is not string && message.Content is not null)
                     {
                         // 假设是对象数组，尝试转换为字符串计算
-                        var contentString = message.Content.ToString();
-                        if (!string.IsNullOrEmpty(contentString))
-                        {
-                            estimatedInputTokens += contentString.Length / 4;
-                        }
+                        var contentString = message.Content;
+                        if (!string.IsNullOrEmpty(contentString)) estimatedInputTokens += contentString.Length / 4;
                     }
-                }
-            }
 
             // 估算输出token数量（按最大输出的30%估算，避免过高预估）
             var maxTokens = request.MaxTokens ?? 4096;
@@ -1170,7 +1159,7 @@ public partial class MessageService(
     }
 
     /// <summary>
-    /// 判断当前请求是否Claude Code发起，如果是则需要提供默认的请求头
+    ///     判断当前请求是否Claude Code发起，如果是则需要提供默认的请求头
     /// </summary>
     /// <returns></returns>
     private bool IsClaudeCodeRequest(HttpContext httpContext)
@@ -1182,7 +1171,7 @@ public partial class MessageService(
     }
 
     /// <summary>
-    /// 添加API Key配额响应头
+    ///     添加API Key配额响应头
     /// </summary>
     private void AddQuotaHeaders(HttpContext httpContext, ApiKey apiKey)
     {
@@ -1230,7 +1219,7 @@ public partial class MessageService(
     }
 
     /// <summary>
-    /// 根据账户配置映射请求的模型
+    ///     根据账户配置映射请求的模型
     /// </summary>
     /// <param name="requestedModel">请求的原始模型</param>
     /// <param name="account">使用的账户</param>
@@ -1238,10 +1227,7 @@ public partial class MessageService(
     private string MapRequestedModel(string requestedModel, Accounts? account)
     {
         // 如果账户为空或没有配置模型映射，返回原始模型
-        if (account?.SupportedModels == null || account.SupportedModels.Count == 0)
-        {
-            return requestedModel;
-        }
+        if (account?.SupportedModels == null || account.SupportedModels.Count == 0) return requestedModel;
 
         try
         {
@@ -1256,9 +1242,7 @@ public partial class MessageService(
 
                     // 如果找到匹配的源模型，返回目标模型
                     if (string.Equals(sourceModel, requestedModel, StringComparison.OrdinalIgnoreCase))
-                    {
                         return targetModel;
-                    }
                 }
             }
 
@@ -1273,7 +1257,7 @@ public partial class MessageService(
     }
 
     /// <summary>
-    /// 从Claude API响应头同步限流信息到账户
+    ///     从Claude API响应头同步限流信息到账户
     /// </summary>
     private async Task SyncRateLimitFromResponseHeaders(HttpContext httpContext, Accounts? account,
         CancellationToken cancellationToken)
@@ -1293,7 +1277,6 @@ public partial class MessageService(
 
             // 检查是否接近限流
             if (!string.IsNullOrEmpty(rateLimitLimit) && !string.IsNullOrEmpty(rateLimitRemaining))
-            {
                 if (int.TryParse(rateLimitLimit, out var limit) && int.TryParse(rateLimitRemaining, out var remaining))
                 {
                     var usagePercent = (double)(limit - remaining) / limit * 100;
@@ -1304,26 +1287,20 @@ public partial class MessageService(
                     // 如果剩余请求数为0或接近限流，设置限流状态
                     if (remaining <= 0)
                     {
-                        DateTime rateLimitedUntil = DateTime.UtcNow.AddMinutes(5); // 默认5分钟
+                        var rateLimitedUntil = DateTime.UtcNow.AddMinutes(5); // 默认5分钟
 
                         // 尝试解析reset时间
                         if (!string.IsNullOrEmpty(rateLimitReset))
                         {
                             if (DateTime.TryParse(rateLimitReset, out var resetTime))
-                            {
                                 rateLimitedUntil = resetTime;
-                            }
                             else if (long.TryParse(rateLimitReset, out var unixTimestamp))
-                            {
                                 rateLimitedUntil = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
-                            }
                         }
                         else if (!string.IsNullOrEmpty(retryAfter))
                         {
                             if (int.TryParse(retryAfter, out var retryAfterSeconds))
-                            {
                                 rateLimitedUntil = DateTime.UtcNow.AddSeconds(retryAfterSeconds);
-                            }
                         }
 
                         await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil,
@@ -1338,17 +1315,13 @@ public partial class MessageService(
                             account.Name, remaining, limit, usagePercent);
                     }
                 }
-            }
 
             // 如果当前账户状态是限流，但响应成功，说明限流可能已解除
             if (account.Status == "rate_limited" &&
                 (account.RateLimitedUntil == null || account.RateLimitedUntil < DateTime.UtcNow))
             {
                 var recovered = await accountsService.RecoverRateLimitedAccountAsync(account.Id, cancellationToken);
-                if (recovered)
-                {
-                    logger.LogInformation("✅ 账户 {AccountName} 限流已自动恢复", account.Name);
-                }
+                if (recovered) logger.LogInformation("✅ 账户 {AccountName} 限流已自动恢复", account.Name);
             }
         }
         catch (Exception ex)

@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using System.Text.Json;
+﻿using System.Text.Json;
 using ClaudeCodeProxy.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +28,11 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
     {
         ProcessAuditableEntities();
         await SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task MigrateAsync()
+    {
+        await base.Database.MigrateAsync();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1419,11 +1423,6 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
             entity.HasIndex(e => e.DefaultAccountId)
                 .HasDatabaseName("IX_ApiKeys_DefaultAccountId");
         });
-    }
-
-    public async Task MigrateAsync()
-    {
-        await base.Database.MigrateAsync();
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

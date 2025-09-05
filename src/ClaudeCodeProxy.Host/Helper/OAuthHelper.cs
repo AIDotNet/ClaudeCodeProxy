@@ -1,10 +1,10 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using ClaudeCodeProxy.Domain;
-using Microsoft.Extensions.Logging;
 
 namespace ClaudeCodeProxy.Host.Helper;
 
@@ -50,8 +50,8 @@ public class ClaudeAiOAuth
 
 public class OAuthHelper
 {
-    private readonly ILogger<OAuthHelper> _logger;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<OAuthHelper> _logger;
 
     public OAuthHelper(ILogger<OAuthHelper> logger, HttpClient httpClient)
     {
@@ -176,7 +176,6 @@ public class OAuthHelper
 
                 var errorMessage = $"HTTP {(int)response.StatusCode}";
                 if (!string.IsNullOrEmpty(errorContent))
-                {
                     try
                     {
                         using var errorDoc = JsonDocument.Parse(errorContent);
@@ -184,9 +183,7 @@ public class OAuthHelper
                         {
                             errorMessage += $": {error.GetString()}";
                             if (errorDoc.RootElement.TryGetProperty("error_description", out var description))
-                            {
                                 errorMessage += $" - {description.GetString()}";
-                            }
                         }
                         else
                         {
@@ -197,7 +194,6 @@ public class OAuthHelper
                     {
                         errorMessage += $": {errorContent}";
                     }
-                }
 
                 throw new Exception($"Token exchange failed: {errorMessage}");
             }
@@ -257,25 +253,18 @@ public class OAuthHelper
 
     public string ParseCallbackUrl(string input)
     {
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            throw new ArgumentException("请提供有效的授权码或回调 URL");
-        }
+        if (string.IsNullOrWhiteSpace(input)) throw new ArgumentException("请提供有效的授权码或回调 URL");
 
         var trimmedInput = input.Trim();
 
         if (trimmedInput.StartsWith("http://") || trimmedInput.StartsWith("https://"))
-        {
             try
             {
                 var uri = new Uri(trimmedInput);
                 var query = HttpUtility.ParseQueryString(uri.Query);
                 var authorizationCode = query["code"];
 
-                if (string.IsNullOrEmpty(authorizationCode))
-                {
-                    throw new ArgumentException("回调 URL 中未找到授权码 (code 参数)");
-                }
+                if (string.IsNullOrEmpty(authorizationCode)) throw new ArgumentException("回调 URL 中未找到授权码 (code 参数)");
 
                 return authorizationCode;
             }
@@ -283,20 +272,15 @@ public class OAuthHelper
             {
                 throw new ArgumentException("无效的 URL 格式，请检查回调 URL 是否正确");
             }
-        }
 
         var cleanedCode = trimmedInput.Split('#')[0]?.Split('&')[0] ?? trimmedInput;
 
         if (string.IsNullOrEmpty(cleanedCode) || cleanedCode.Length < 10)
-        {
             throw new ArgumentException("授权码格式无效，请确保复制了完整的 Authorization Code");
-        }
 
         var validCodePattern = new Regex(@"^[A-Za-z0-9_-]+$");
         if (!validCodePattern.IsMatch(cleanedCode))
-        {
             throw new ArgumentException("授权码包含无效字符，请检查是否复制了正确的 Authorization Code");
-        }
 
         return cleanedCode;
     }
@@ -318,10 +302,7 @@ public class OAuthHelper
 
     private HttpClient CreateHttpClientWithProxy(ProxyConfig? proxyConfig)
     {
-        if (proxyConfig == null)
-        {
-            return new HttpClient();
-        }
+        if (proxyConfig == null) return new HttpClient();
 
         try
         {
@@ -329,12 +310,10 @@ public class OAuthHelper
             var proxyUri = $"{proxyConfig.Type}://{proxyConfig.Host}:{proxyConfig.Port}";
 
             if (!string.IsNullOrEmpty(proxyConfig.Username) && !string.IsNullOrEmpty(proxyConfig.Password))
-            {
                 proxyUri =
                     $"{proxyConfig.Type}://{proxyConfig.Username}:{proxyConfig.Password}@{proxyConfig.Host}:{proxyConfig.Port}";
-            }
 
-            handler.Proxy = new System.Net.WebProxy(proxyUri);
+            handler.Proxy = new WebProxy(proxyUri);
             handler.UseProxy = true;
 
             return new HttpClient(handler);

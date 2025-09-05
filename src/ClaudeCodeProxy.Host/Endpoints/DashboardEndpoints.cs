@@ -10,12 +10,12 @@ using Microsoft.EntityFrameworkCore;
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// Dashboard统计相关端点
+///     Dashboard统计相关端点
 /// </summary>
 public static class DashboardEndpoints
 {
     /// <summary>
-    /// 配置Dashboard相关端点
+    ///     配置Dashboard相关端点
     /// </summary>
     public static void MapDashboardEndpoints(this IEndpointRouteBuilder app)
     {
@@ -102,7 +102,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取Dashboard统计数据
+    ///     获取Dashboard统计数据
     /// </summary>
     private static async Task<Results<Ok<DashboardResponse>, BadRequest<string>>> GetDashboardData(
         [FromServices] StatisticsService statisticsService,
@@ -111,7 +111,8 @@ public static class DashboardEndpoints
     {
         try
         {
-            var dashboardData = await statisticsService.GetDashboardDataAsync(userContext.IsAdmin(),userContext.GetCurrentUserId().Value,cancellationToken);
+            var dashboardData = await statisticsService.GetDashboardDataAsync(userContext.IsAdmin(),
+                userContext.GetCurrentUserId().Value, cancellationToken);
             return TypedResults.Ok(dashboardData);
         }
         catch (Exception ex)
@@ -121,7 +122,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取费用数据
+    ///     获取费用数据
     /// </summary>
     private static async Task<Results<Ok<CostDataResponse>, BadRequest<string>>> GetCostData(
         [FromServices] StatisticsService statisticsService,
@@ -130,7 +131,8 @@ public static class DashboardEndpoints
     {
         try
         {
-            var costData = await statisticsService.GetCostDataAsync(userContext.GetCurrentUserId().Value,cancellationToken);
+            var costData =
+                await statisticsService.GetCostDataAsync(userContext.GetCurrentUserId().Value, cancellationToken);
             return TypedResults.Ok(costData);
         }
         catch (Exception ex)
@@ -140,7 +142,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取模型统计数据
+    ///     获取模型统计数据
     /// </summary>
     private static async Task<Results<Ok<List<ModelStatistics>>, BadRequest<string>>> GetModelStatistics(
         [FromServices] StatisticsService statisticsService,
@@ -169,7 +171,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取趋势数据
+    ///     获取趋势数据
     /// </summary>
     private static async Task<Results<Ok<List<TrendDataPoint>>, BadRequest<string>>> GetTrendData(
         [FromServices] StatisticsService statisticsService,
@@ -203,7 +205,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取API Keys趋势数据
+    ///     获取API Keys趋势数据
     /// </summary>
     private static async Task<Results<Ok<ApiKeysTrendResponse>, BadRequest<string>>> GetApiKeysTrend(
         [FromServices] StatisticsService statisticsService,
@@ -238,7 +240,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取系统运行时间
+    ///     获取系统运行时间
     /// </summary>
     private static Ok<UptimeResponse> GetSystemUptime()
     {
@@ -264,7 +266,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取请求日志列表
+    ///     获取请求日志列表
     /// </summary>
     private static async Task<Results<Ok<RequestLogsResponse>, BadRequest<string>>> GetRequestLogs(
         [FromServices] StatisticsService statisticsService,
@@ -287,36 +289,21 @@ public static class DashboardEndpoints
             }
 
             if (!string.IsNullOrEmpty(request.ApiKeyId))
-            {
                 if (Guid.TryParse(request.ApiKeyId, out var apiKeyGuid))
-                {
                     query = query.Where(x => x.ApiKeyId == apiKeyGuid);
-                }
-            }
 
-            if (!string.IsNullOrEmpty(request.Status))
-            {
-                query = query.Where(x => x.Status == request.Status);
-            }
+            if (!string.IsNullOrEmpty(request.Status)) query = query.Where(x => x.Status == request.Status);
 
-            if (!string.IsNullOrEmpty(request.Model))
-            {
-                query = query.Where(x => x.Model.Contains(request.Model));
-            }
+            if (!string.IsNullOrEmpty(request.Model)) query = query.Where(x => x.Model.Contains(request.Model));
 
-            if (!string.IsNullOrEmpty(request.Platform))
-            {
-                query = query.Where(x => x.Platform == request.Platform);
-            }
+            if (!string.IsNullOrEmpty(request.Platform)) query = query.Where(x => x.Platform == request.Platform);
 
             if (!string.IsNullOrEmpty(request.SearchTerm))
-            {
                 query = query.Where(x =>
                     x.ApiKeyName.Contains(request.SearchTerm) ||
                     x.AccountName!.Contains(request.SearchTerm) ||
                     x.RequestId!.Contains(request.SearchTerm) ||
                     x.ErrorMessage!.Contains(request.SearchTerm));
-            }
 
             // 计算总数
             var total = await query.CountAsync(cancellationToken);
@@ -384,7 +371,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取请求日志详情
+    ///     获取请求日志详情
     /// </summary>
     private static async Task<Results<Ok<RequestLog>, NotFound<string>, BadRequest<string>>> GetRequestLogDetail(
         [FromServices] IContext context,
@@ -398,10 +385,7 @@ public static class DashboardEndpoints
                 .Where(x => x.UserId == userContext.GetCurrentUserId())
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-            if (log == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的请求日志");
-            }
+            if (log == null) return TypedResults.NotFound($"未找到ID为 {id} 的请求日志");
 
             return TypedResults.Ok(log);
         }
@@ -412,7 +396,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取请求状态统计
+    ///     获取请求状态统计
     /// </summary>
     private static async Task<Results<Ok<List<RequestStatusStat>>, BadRequest<string>>> GetRequestStatusStats(
         [FromServices] IContext context,
@@ -454,7 +438,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取实时请求监控数据
+    ///     获取实时请求监控数据
     /// </summary>
     private static async Task<Results<Ok<RealtimeRequestsResponse>, BadRequest<string>>> GetRealtimeRequests(
         [FromServices] IContext context,
@@ -530,7 +514,7 @@ public static class DashboardEndpoints
     }
 
     /// <summary>
-    /// 获取API Key到模型的成本流向数据
+    ///     获取API Key到模型的成本流向数据
     /// </summary>
     private static async Task<Results<Ok<List<ApiKeyModelFlowData>>, BadRequest<string>>> GetApiKeyModelFlowData(
         [FromServices] StatisticsService statisticsService,
@@ -562,59 +546,59 @@ public static class DashboardEndpoints
 }
 
 /// <summary>
-/// 趋势数据请求
+///     趋势数据请求
 /// </summary>
 public class TrendDataRequest
 {
     /// <summary>
-    /// 趋势粒度
+    ///     趋势粒度
     /// </summary>
     public TrendGranularity Granularity { get; set; } = TrendGranularity.Day;
 
     /// <summary>
-    /// 日期过滤器
+    ///     日期过滤器
     /// </summary>
     public DateFilterRequest? DateFilter { get; set; }
 }
 
 /// <summary>
-/// API Keys趋势请求
+///     API Keys趋势请求
 /// </summary>
 public class ApiKeysTrendRequest
 {
     /// <summary>
-    /// 指标类型
+    ///     指标类型
     /// </summary>
     public ApiKeysTrendMetric Metric { get; set; } = ApiKeysTrendMetric.Tokens;
 
     /// <summary>
-    /// 趋势粒度
+    ///     趋势粒度
     /// </summary>
     public TrendGranularity Granularity { get; set; } = TrendGranularity.Day;
 
     /// <summary>
-    /// 日期过滤器
+    ///     日期过滤器
     /// </summary>
     public DateFilterRequest? DateFilter { get; set; }
 }
 
 /// <summary>
-/// 系统运行时间响应
+///     系统运行时间响应
 /// </summary>
 public class UptimeResponse
 {
     /// <summary>
-    /// 运行时间（秒）
+    ///     运行时间（秒）
     /// </summary>
     public long UptimeSeconds { get; set; }
 
     /// <summary>
-    /// 格式化的运行时间文本
+    ///     格式化的运行时间文本
     /// </summary>
     public string UptimeText { get; set; } = string.Empty;
 
     /// <summary>
-    /// 系统启动时间
+    ///     系统启动时间
     /// </summary>
     public DateTime StartTime { get; set; }
 }

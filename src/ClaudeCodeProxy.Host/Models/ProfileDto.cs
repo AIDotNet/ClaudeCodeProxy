@@ -1,7 +1,7 @@
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 用户个人资料DTO
+///     用户个人资料DTO
 /// </summary>
 public class UserProfileDto
 {
@@ -23,7 +23,7 @@ public class UserProfileDto
 }
 
 /// <summary>
-/// 钱包个人资料DTO
+///     钱包个人资料DTO
 /// </summary>
 public class WalletProfileDto
 {
@@ -37,7 +37,7 @@ public class WalletProfileDto
 }
 
 /// <summary>
-/// 个人仪表板DTO
+///     个人仪表板DTO
 /// </summary>
 public class ProfileDashboardDto
 {
@@ -50,7 +50,7 @@ public class ProfileDashboardDto
 }
 
 /// <summary>
-/// 更新个人资料请求
+///     更新个人资料请求
 /// </summary>
 public class UpdateProfileRequest
 {

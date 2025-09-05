@@ -3,42 +3,42 @@
 namespace Thor.Abstractions.Responses.Dto;
 
 /// <summary>
-/// Output element of the response.
-/// 响应的输出元素。
+///     Output element of the response.
+///     响应的输出元素。
 /// </summary>
 public class ResponsesOutputDto
 {
     /// <summary>
-    /// Type of output.
-    /// 输出类型。
+    ///     Type of output.
+    ///     输出类型。
     /// </summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
     /// <summary>
-    /// Unique identifier for the output.
-    /// 输出的唯一标识符。
+    ///     Unique identifier for the output.
+    ///     输出的唯一标识符。
     /// </summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
     /// <summary>
-    /// Status of the output.
-    /// 输出状态。
+    ///     Status of the output.
+    ///     输出状态。
     /// </summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
     /// <summary>
-    /// Role associated with the output.
-    /// 与输出相关联的角色。
+    ///     Role associated with the output.
+    ///     与输出相关联的角色。
     /// </summary>
     [JsonPropertyName("role")]
     public string? Role { get; set; }
 
     /// <summary>
-    /// Array of content elements.
-    /// 内容元素数组。
+    ///     Array of content elements.
+    ///     内容元素数组。
     /// </summary>
     [JsonPropertyName("content")]
     public ResponsesContent[]? Content { get; set; }
@@ -72,25 +72,20 @@ public class ResponsesOutputDto
     [JsonPropertyName("error")] public string? Error { get; set; }
 
     [JsonPropertyName("output")] public string? Output { get; set; }
-    
+
     [JsonPropertyName("tools")] public IList<ResponsesToolsDto>? Tools { get; set; }
 }
 
 public class ResponsesToolsDto
 {
-    [JsonPropertyName("input_schema")]
-    public object? InputSchema { get; set; }
-    
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-    
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
-    
-    [JsonPropertyName("annotations")]
-    public object? Annotations { get; set; }
-}
+    [JsonPropertyName("input_schema")] public object? InputSchema { get; set; }
 
+    [JsonPropertyName("name")] public string? Name { get; set; }
+
+    [JsonPropertyName("description")] public string? Description { get; set; }
+
+    [JsonPropertyName("annotations")] public object? Annotations { get; set; }
+}
 
 public class ResponsesOutputFileContentResults
 {

@@ -1,13 +1,12 @@
+using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Filters;
 using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
-using ClaudeCodeProxy.Domain;
-using Microsoft.AspNetCore.Authorization;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 用户管理端点
+///     用户管理端点
 /// </summary>
 public static class UserEndpoints
 {
@@ -93,13 +92,11 @@ public static class UserEndpoints
                     {
                         var result = await userService.ResetPasswordAsync(id, request);
                         if (!result)
-                        {
                             return Results.NotFound(new ApiResponse<object>
                             {
                                 Success = false,
                                 Message = "用户不存在"
                             });
-                        }
 
                         return Results.Ok(new ApiResponse<object>
                         {
@@ -139,7 +136,7 @@ public static class UserEndpoints
             .Produces<ApiResponse<List<UserLoginHistoryDto>>>();
 
         // 获取用户账户绑定管理信息
-        group.MapGet("/{id:Guid}/account-bindings", 
+        group.MapGet("/{id:Guid}/account-bindings",
                 async (Guid id, UserAccountBindingService bindingService) =>
                 {
                     try
@@ -167,18 +164,18 @@ public static class UserEndpoints
             .Produces<ApiResponse<object>>(400);
 
         // 绑定用户到账户
-        group.MapPost("/{id:Guid}/account-bindings", 
+        group.MapPost("/{id:Guid}/account-bindings",
                 async (Guid id, BindAccountRequest request, UserAccountBindingService bindingService) =>
                 {
                     try
                     {
                         var binding = await bindingService.BindUserToAccountAsync(
-                            id, 
-                            request.AccountId, 
-                            request.Priority, 
-                            request.BindingType, 
+                            id,
+                            request.AccountId,
+                            request.Priority,
+                            request.BindingType,
                             request.Remarks);
-                        
+
                         return Results.Ok(new ApiResponse<UserAccountBinding>
                         {
                             Success = true,
@@ -209,20 +206,18 @@ public static class UserEndpoints
             .Produces<ApiResponse<object>>(400);
 
         // 解除用户账户绑定
-        group.MapDelete("/{id:Guid}/account-bindings/{accountId}", 
+        group.MapDelete("/{id:Guid}/account-bindings/{accountId}",
                 async (Guid id, string accountId, UserAccountBindingService bindingService) =>
                 {
                     try
                     {
                         var result = await bindingService.UnbindUserFromAccountAsync(id, accountId);
                         if (!result)
-                        {
                             return Results.NotFound(new ApiResponse<object>
                             {
                                 Success = false,
                                 Message = "找不到该绑定关系"
                             });
-                        }
 
                         return Results.Ok(new ApiResponse<object>
                         {
@@ -246,20 +241,19 @@ public static class UserEndpoints
             .Produces<ApiResponse<object>>(404);
 
         // 更新用户账户绑定优先级
-        group.MapPut("/{id:Guid}/account-bindings/{accountId}/priority", 
-                async (Guid id, string accountId, UpdateBindingPriorityRequest request, UserAccountBindingService bindingService) =>
+        group.MapPut("/{id:Guid}/account-bindings/{accountId}/priority",
+                async (Guid id, string accountId, UpdateBindingPriorityRequest request,
+                    UserAccountBindingService bindingService) =>
                 {
                     try
                     {
                         var result = await bindingService.UpdateBindingPriorityAsync(id, accountId, request.Priority);
                         if (!result)
-                        {
                             return Results.NotFound(new ApiResponse<object>
                             {
                                 Success = false,
                                 Message = "找不到该绑定关系"
                             });
-                        }
 
                         return Results.Ok(new ApiResponse<object>
                         {
@@ -283,7 +277,7 @@ public static class UserEndpoints
             .Produces<ApiResponse<object>>(404);
 
         // 批量更新用户账户绑定
-        group.MapPut("/{id:Guid}/account-bindings", 
+        group.MapPut("/{id:Guid}/account-bindings",
                 async (Guid id, UpdateUserAccountBindingsRequest request, UserAccountBindingService bindingService) =>
                 {
                     try

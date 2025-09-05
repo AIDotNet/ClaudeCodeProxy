@@ -49,7 +49,7 @@ public class ResponsesToolsInput
     [JsonPropertyName("display_width")] public int? DisplayWidth { get; set; }
 
     /// <summary>
-    /// The type of computer environment to control.
+    ///     The type of computer environment to control.
     /// </summary>
     [JsonPropertyName("environment")]
     public string? Environment { get; set; }
@@ -57,7 +57,7 @@ public class ResponsesToolsInput
     [JsonPropertyName("container")] public string? Container { get; set; }
 
     /// <summary>
-    /// Background type for the generated image. One of transparent, opaque, or auto. Default: auto.
+    ///     Background type for the generated image. One of transparent, opaque, or auto. Default: auto.
     /// </summary>
     [JsonPropertyName("background")]
     public string? Background { get; set; }
@@ -67,19 +67,19 @@ public class ResponsesToolsInput
     [JsonPropertyName("model")] public string? Model { get; set; }
 
     /// <summary>
-    /// Moderation level for the generated image. Default: auto.
+    ///     Moderation level for the generated image. Default: auto.
     /// </summary>
     [JsonPropertyName("moderation")]
     public string? Moderation { get; set; }
 
     /// <summary>
-    /// Compression level for the output image. Default: 100.
+    ///     Compression level for the output image. Default: 100.
     /// </summary>
     [JsonPropertyName("output_compression")]
     public string? OutputCompression { get; set; }
 
     /// <summary>
-    /// The output format of the generated image. One of png, webp, or jpeg. Default: png.
+    ///     The output format of the generated image. One of png, webp, or jpeg. Default: png.
     /// </summary>
     [JsonPropertyName("output_format")]
     public string? OutputFormat { get; set; }
@@ -87,7 +87,7 @@ public class ResponsesToolsInput
     [JsonPropertyName("partial_images")] public int? PartialImages { get; set; }
 
     /// <summary>
-    /// The quality of the generated image. One of low, medium, high, or auto. Default: auto.
+    ///     The quality of the generated image. One of low, medium, high, or auto. Default: auto.
     /// </summary>
     [JsonPropertyName("quality")]
     public string? Quality { get; set; }

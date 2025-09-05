@@ -2,17 +2,51 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Thor.Abstractions.Anthropic;
+namespace ClaudeCodeProxy.Abstraction.Anthropic;
 
 public class AnthropicMessageContent
 {
     private string? _content;
 
     private List<AnthropicMessageContent>? _contents;
-    [JsonPropertyName("cache_control")] public AnthropicCacheControl? CacheControl { get; set; }
-    
-    [JsonPropertyName("signature")]  public string? Signature { get; set; }
-    
+
+    [JsonPropertyName("title")] public string? Title { get; set; }
+
+    private AnthropicCitations[]? Citations;
+
+    private AnthropicCitationsItem? _citation;
+
+    //
+    [JsonPropertyName("citations")]
+    public object? Citation
+    {
+        get
+        {
+            if (_citation is null && Citations is null) return null;
+
+            if (_citation is not null && Citations is not null)
+                throw new ValidationException("Messages 中 Citation 和 Citations 字段不能同时有值");
+
+            if (_citation is not null) return _citation;
+
+            return Citations;
+        }
+        set
+        {
+            if (value is JsonElement str)
+            {
+                if (str.ValueKind == JsonValueKind.Array)
+                    Citations = JsonSerializer.Deserialize<AnthropicCitations[]>(value?.ToString());
+                else if (str.ValueKind == JsonValueKind.Object)
+                    _citation = JsonSerializer.Deserialize<AnthropicCitationsItem>(value?.ToString());
+            }
+        }
+    }
+
+    [JsonPropertyName("cache_control")] public AnthropicCacheControls? CacheControl { get; set; }
+
+    [JsonPropertyName("signature")] public string? Signature { get; set; }
+
     [JsonPropertyName("thinking")] public string? Thinking { get; set; }
 
     [JsonPropertyName("type")] public string Type { get; set; }
@@ -59,10 +93,14 @@ public class AnthropicMessageContent
 
     public class AnthropicMessageContentSource
     {
-        [JsonPropertyName("type")] public string Type { get; set; }
+        [JsonPropertyName("type")] public string? Type { get; set; }
 
         [JsonPropertyName("media_type")] public string? MediaType { get; set; }
 
         [JsonPropertyName("data")] public string? Data { get; set; }
+
+        [JsonPropertyName("url")] public string? Url { get; set; }
+
+        [JsonPropertyName("file_id")] public string? FileId { get; set; }
     }
 }

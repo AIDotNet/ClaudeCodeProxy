@@ -1,39 +1,33 @@
+using System.Security.Cryptography;
+using System.Text;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 兑换码服务
+///     兑换码服务
 /// </summary>
 public class RedeemCodeService(IContext context, WalletService walletService)
 {
     /// <summary>
-    /// 生成兑换码
+    ///     生成兑换码
     /// </summary>
     public async Task<List<RedeemCodeDto>> CreateRedeemCodesAsync(
-        CreateRedeemCodeRequest request, 
+        CreateRedeemCodeRequest request,
         Guid createdByUserId,
         CancellationToken cancellationToken = default)
     {
-        if (request.Amount <= 0)
-        {
-            throw new ArgumentException("兑换金额必须大于0");
-        }
+        if (request.Amount <= 0) throw new ArgumentException("兑换金额必须大于0");
 
-        if (request.Count <= 0 || request.Count > 100)
-        {
-            throw new ArgumentException("生成数量必须在1-100之间");
-        }
+        if (request.Count <= 0 || request.Count > 100) throw new ArgumentException("生成数量必须在1-100之间");
 
         var redeemCodes = new List<RedeemCode>();
         var redeemCodeDtos = new List<RedeemCodeDto>();
 
-        for (int i = 0; i < request.Count; i++)
+        for (var i = 0; i < request.Count; i++)
         {
             var code = GenerateRedeemCode();
             var redeemCode = new RedeemCode
@@ -53,19 +47,16 @@ public class RedeemCodeService(IContext context, WalletService walletService)
         await context.SaveAsync(cancellationToken);
 
         // 返回创建的兑换码信息
-        foreach (var redeemCode in redeemCodes)
-        {
-            redeemCodeDtos.Add(MapToDto(redeemCode));
-        }
+        foreach (var redeemCode in redeemCodes) redeemCodeDtos.Add(MapToDto(redeemCode));
 
         return redeemCodeDtos;
     }
 
     /// <summary>
-    /// 使用兑换码
+    ///     使用兑换码
     /// </summary>
     public async Task<RedeemCodeUseResult> UseRedeemCodeAsync(
-        string code, 
+        string code,
         Guid userId,
         CancellationToken cancellationToken = default)
     {
@@ -74,20 +65,18 @@ public class RedeemCodeService(IContext context, WalletService walletService)
             .FirstOrDefaultAsync(r => r.Code == code, cancellationToken);
 
         if (redeemCode == null)
-        {
             return new RedeemCodeUseResult
             {
                 Success = false,
                 Message = "兑换码不存在"
             };
-        }
 
         if (!redeemCode.IsValid())
         {
             var message = redeemCode.IsUsed ? "兑换码已被使用" :
-                         !redeemCode.IsEnabled ? "兑换码已被禁用" :
-                         "兑换码已过期";
-            
+                !redeemCode.IsEnabled ? "兑换码已被禁用" :
+                "兑换码已过期";
+
             return new RedeemCodeUseResult
             {
                 Success = false,
@@ -97,13 +86,11 @@ public class RedeemCodeService(IContext context, WalletService walletService)
 
         // 检查是否已被当前用户使用
         if (redeemCode.UsedByUserId == userId)
-        {
             return new RedeemCodeUseResult
             {
                 Success = false,
                 Message = "您已经使用过此兑换码"
             };
-        }
 
         // 使用兑换码
         redeemCode.Use(userId);
@@ -114,8 +101,8 @@ public class RedeemCodeService(IContext context, WalletService walletService)
         {
             // 充值到钱包
             await walletService.RechargeWalletAsync(
-                userId, 
-                redeemCode.Amount, 
+                userId,
+                redeemCode.Amount,
                 $"兑换码充值 - {redeemCode.Code}",
                 "redeem_code",
                 redeemCode.Id.ToString());
@@ -138,7 +125,7 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 获取兑换码列表（管理员）
+    ///     获取兑换码列表（管理员）
     /// </summary>
     public async Task<RedeemCodeListResponse> GetRedeemCodesAsync(
         RedeemCodeListRequest request,
@@ -150,45 +137,22 @@ public class RedeemCodeService(IContext context, WalletService walletService)
             .AsQueryable();
 
         // 应用过滤条件
-        if (!string.IsNullOrEmpty(request.Code))
-        {
-            query = query.Where(r => r.Code.Contains(request.Code));
-        }
+        if (!string.IsNullOrEmpty(request.Code)) query = query.Where(r => r.Code.Contains(request.Code));
 
-        if (!string.IsNullOrEmpty(request.Type))
-        {
-            query = query.Where(r => r.Type == request.Type);
-        }
+        if (!string.IsNullOrEmpty(request.Type)) query = query.Where(r => r.Type == request.Type);
 
-        if (request.IsUsed.HasValue)
-        {
-            query = query.Where(r => r.IsUsed == request.IsUsed.Value);
-        }
+        if (request.IsUsed.HasValue) query = query.Where(r => r.IsUsed == request.IsUsed.Value);
 
-        if (request.IsEnabled.HasValue)
-        {
-            query = query.Where(r => r.IsEnabled == request.IsEnabled.Value);
-        }
+        if (request.IsEnabled.HasValue) query = query.Where(r => r.IsEnabled == request.IsEnabled.Value);
 
         if (request.CreatedByUserId.HasValue)
-        {
             query = query.Where(r => r.CreatedByUserId == request.CreatedByUserId.Value);
-        }
 
-        if (request.UsedByUserId.HasValue)
-        {
-            query = query.Where(r => r.UsedByUserId == request.UsedByUserId.Value);
-        }
+        if (request.UsedByUserId.HasValue) query = query.Where(r => r.UsedByUserId == request.UsedByUserId.Value);
 
-        if (request.StartDate.HasValue)
-        {
-            query = query.Where(r => r.CreatedAt >= request.StartDate.Value);
-        }
+        if (request.StartDate.HasValue) query = query.Where(r => r.CreatedAt >= request.StartDate.Value);
 
-        if (request.EndDate.HasValue)
-        {
-            query = query.Where(r => r.CreatedAt <= request.EndDate.Value);
-        }
+        if (request.EndDate.HasValue) query = query.Where(r => r.CreatedAt <= request.EndDate.Value);
 
         // 计算总数
         var total = await query.CountAsync(cancellationToken);
@@ -196,7 +160,7 @@ public class RedeemCodeService(IContext context, WalletService walletService)
         // 应用排序
         query = request.SortBy?.ToLower() switch
         {
-            "code" => request.SortDirection == "desc" 
+            "code" => request.SortDirection == "desc"
                 ? query.OrderByDescending(r => r.Code)
                 : query.OrderBy(r => r.Code),
             "amount" => request.SortDirection == "desc"
@@ -232,7 +196,7 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 获取用户兑换记录
+    ///     获取用户兑换记录
     /// </summary>
     public async Task<List<RedeemRecordDto>> GetUserRedeemRecordsAsync(
         Guid userId,
@@ -258,20 +222,17 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 禁用/启用兑换码
+    ///     禁用/启用兑换码
     /// </summary>
     public async Task<bool> UpdateRedeemCodeStatusAsync(
-        Guid id, 
+        Guid id,
         bool isEnabled,
         CancellationToken cancellationToken = default)
     {
         var redeemCode = await context.RedeemCodes
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
-        if (redeemCode == null)
-        {
-            return false;
-        }
+        if (redeemCode == null) return false;
 
         redeemCode.IsEnabled = isEnabled;
         await context.SaveAsync(cancellationToken);
@@ -280,7 +241,7 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 删除兑换码
+    ///     删除兑换码
     /// </summary>
     public async Task<bool> DeleteRedeemCodeAsync(
         Guid id,
@@ -289,15 +250,9 @@ public class RedeemCodeService(IContext context, WalletService walletService)
         var redeemCode = await context.RedeemCodes
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
-        if (redeemCode == null)
-        {
-            return false;
-        }
+        if (redeemCode == null) return false;
 
-        if (redeemCode.IsUsed)
-        {
-            throw new InvalidOperationException("已使用的兑换码不能删除");
-        }
+        if (redeemCode.IsUsed) throw new InvalidOperationException("已使用的兑换码不能删除");
 
         context.RedeemCodes.Remove(redeemCode);
         await context.SaveAsync(cancellationToken);
@@ -306,7 +261,7 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 获取兑换码统计信息
+    ///     获取兑换码统计信息
     /// </summary>
     public async Task<object> GetRedeemCodeStatsAsync(CancellationToken cancellationToken = default)
     {
@@ -330,23 +285,20 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 生成兑换码
+    ///     生成兑换码
     /// </summary>
     private static string GenerateRedeemCode()
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         var result = new StringBuilder();
-        
+
         using var rng = RandomNumberGenerator.Create();
         var buffer = new byte[16];
         rng.GetBytes(buffer);
 
-        for (int i = 0; i < 16; i++)
+        for (var i = 0; i < 16; i++)
         {
-            if (i > 0 && i % 4 == 0)
-            {
-                result.Append('-');
-            }
+            if (i > 0 && i % 4 == 0) result.Append('-');
             result.Append(chars[buffer[i] % chars.Length]);
         }
 
@@ -354,7 +306,7 @@ public class RedeemCodeService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 映射到DTO
+    ///     映射到DTO
     /// </summary>
     private static RedeemCodeDto MapToDto(RedeemCode redeemCode)
     {

@@ -7,14 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ClaudeCodeProxy.Abstraction\ClaudeCodeProxy.Abstraction.csproj" />
-      <ProjectReference Include="..\ClaudeCodeProxy.Domain\ClaudeCodeProxy.Domain.csproj" />
+        <ProjectReference Include="..\ClaudeCodeProxy.Abstraction\ClaudeCodeProxy.Abstraction.csproj"/>
+        <ProjectReference Include="..\ClaudeCodeProxy.Domain\ClaudeCodeProxy.Domain.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
-      <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0"/>
     </ItemGroup>
 
 </Project>

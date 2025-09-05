@@ -9,11 +9,13 @@ public class StaticValues
             public static string Size256 => "256x256";
             public static string Size512 => "512x512";
             public static string Size1024 => "1024x1024";
+
             /// <summary>
             ///     Only dall-e-3 model
             /// </summary>
             // ReSharper disable once InconsistentNaming
             public static string Size1792x1024 => "1792x1024";
+
             /// <summary>
             ///     Only dall-e-3 model
             /// </summary>
@@ -52,7 +54,6 @@ public class StaticValues
             public static string High => "high";
             public static string Low => "low";
             public static string Auto => "auto";
-
         }
     }
 
@@ -66,6 +67,7 @@ public class StaticValues
             public static string VerboseJson => "verbose_json";
             public static string Vtt => "vtt";
         }
+
         public static class CreateSpeechResponseFormat
         {
             public static string Mp3 => "mp3";

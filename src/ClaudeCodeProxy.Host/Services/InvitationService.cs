@@ -1,7 +1,8 @@
-using Microsoft.EntityFrameworkCore;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
+using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClaudeCodeProxy.Host.Services;
 
@@ -87,10 +88,7 @@ public class InvitationService : IInvitationService
 
         // 更新被邀请用户的邀请关系
         var invitedUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == newUserId);
-        if (invitedUser != null)
-        {
-            invitedUser.InvitedByUserId = inviter.Id;
-        }
+        if (invitedUser != null) invitedUser.InvitedByUserId = inviter.Id;
 
         // 创建邀请记录
         var invitationRecord = new InvitationRecord
@@ -117,37 +115,28 @@ public class InvitationService : IInvitationService
     public async Task<decimal> GetInviterRewardAsync()
     {
         var setting = await GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInviterReward);
-        if (decimal.TryParse(setting, out var reward))
-        {
-            return reward;
-        }
+        if (decimal.TryParse(setting, out var reward)) return reward;
 
         // 优先使用环境变量配置
-        return ClaudeCodeProxy.Host.Env.EnvHelper.InviterReward;
+        return EnvHelper.InviterReward;
     }
 
     public async Task<decimal> GetInvitedRewardAsync()
     {
         var setting = await GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInvitedReward);
-        if (decimal.TryParse(setting, out var reward))
-        {
-            return reward;
-        }
+        if (decimal.TryParse(setting, out var reward)) return reward;
 
         // 优先使用环境变量配置
-        return ClaudeCodeProxy.Host.Env.EnvHelper.InvitedReward;
+        return EnvHelper.InvitedReward;
     }
 
     public async Task<int> GetMaxInvitationsAsync()
     {
         var setting = await GetInvitationSettingAsync(InvitationSettings.Keys.DefaultMaxInvitations);
-        if (int.TryParse(setting, out var max))
-        {
-            return max;
-        }
+        if (int.TryParse(setting, out var max)) return max;
 
         // 优先使用环境变量配置
-        return ClaudeCodeProxy.Host.Env.EnvHelper.MaxInvitations;
+        return EnvHelper.MaxInvitations;
     }
 
     public async Task<bool> CanUserInviteMoreAsync(Guid userId)
@@ -196,10 +185,7 @@ public class InvitationService : IInvitationService
         var random = new Random();
         var code = new char[8];
 
-        for (int i = 0; i < 8; i++)
-        {
-            code[i] = chars[random.Next(chars.Length)];
-        }
+        for (var i = 0; i < 8; i++) code[i] = chars[random.Next(chars.Length)];
 
         return new string(code);
     }

@@ -1,19 +1,19 @@
+using System.Text.Json;
+using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
-using ClaudeCodeProxy.Abstraction;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 请求日志服务
+///     请求日志服务
 /// </summary>
 public class RequestLogService(IContext context, WalletService walletService)
 {
     /// <summary>
-    /// 创建请求日志
+    ///     创建请求日志
     /// </summary>
     public async Task<RequestLog> CreateRequestLogAsync(
         Guid userId,
@@ -53,14 +53,14 @@ public class RequestLogService(IContext context, WalletService walletService)
 
         requestLog.InitializeTimeFields();
 
-        context.RequestLogs.Add(requestLog);
+        await context.RequestLogs.AddAsync(requestLog, cancellationToken);
         await context.SaveAsync(cancellationToken);
 
         return requestLog;
     }
 
     /// <summary>
-    /// 完成请求日志记录
+    ///     完成请求日志记录
     /// </summary>
     public async Task CompleteRequestLogAsync(
         Guid requestLogId,
@@ -78,10 +78,7 @@ public class RequestLogService(IContext context, WalletService walletService)
         var requestLog = await context.RequestLogs
             .FirstOrDefaultAsync(r => r.Id == requestLogId, cancellationToken);
 
-        if (requestLog == null)
-        {
-            return;
-        }
+        if (requestLog == null) return;
 
         var endTime = requestEndTime ?? DateTime.Now;
         requestLog.CompleteRequest(endTime, status, errorMessage);
@@ -114,7 +111,7 @@ public class RequestLogService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 获取用户请求日志
+    ///     获取用户请求日志
     /// </summary>
     public async Task<List<RequestLogDto>> GetUserRequestLogsAsync(
         Guid userId,
@@ -129,25 +126,13 @@ public class RequestLogService(IContext context, WalletService walletService)
         var query = context.RequestLogs
             .Where(r => r.UserId == userId);
 
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(r => r.Status == status);
-        }
+        if (!string.IsNullOrEmpty(status)) query = query.Where(r => r.Status == status);
 
-        if (!string.IsNullOrEmpty(model))
-        {
-            query = query.Where(r => r.Model == model);
-        }
+        if (!string.IsNullOrEmpty(model)) query = query.Where(r => r.Model == model);
 
-        if (startDate.HasValue)
-        {
-            query = query.Where(r => r.RequestStartTime >= startDate.Value);
-        }
+        if (startDate.HasValue) query = query.Where(r => r.RequestStartTime >= startDate.Value);
 
-        if (endDate.HasValue)
-        {
-            query = query.Where(r => r.RequestStartTime <= endDate.Value);
-        }
+        if (endDate.HasValue) query = query.Where(r => r.RequestStartTime <= endDate.Value);
 
         return await query
             .OrderByDescending(r => r.RequestStartTime)
@@ -186,7 +171,7 @@ public class RequestLogService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 获取用户请求统计
+    ///     获取用户请求统计
     /// </summary>
     public async Task<UserRequestStatisticsDto> GetUserRequestStatisticsAsync(
         Guid userId,
@@ -253,7 +238,7 @@ public class RequestLogService(IContext context, WalletService walletService)
     }
 
     /// <summary>
-    /// 获取所有用户请求日志（管理员功能）
+    ///     获取所有用户请求日志（管理员功能）
     /// </summary>
     public async Task<List<RequestLogDto>> GetAllRequestLogsAsync(
         int pageIndex = 0,
@@ -269,30 +254,15 @@ public class RequestLogService(IContext context, WalletService walletService)
             .Include(r => r.User)
             .AsQueryable();
 
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(r => r.Status == status);
-        }
+        if (!string.IsNullOrEmpty(status)) query = query.Where(r => r.Status == status);
 
-        if (!string.IsNullOrEmpty(model))
-        {
-            query = query.Where(r => r.Model == model);
-        }
+        if (!string.IsNullOrEmpty(model)) query = query.Where(r => r.Model == model);
 
-        if (userId.HasValue)
-        {
-            query = query.Where(r => r.UserId == userId.Value);
-        }
+        if (userId.HasValue) query = query.Where(r => r.UserId == userId.Value);
 
-        if (startDate.HasValue)
-        {
-            query = query.Where(r => r.RequestStartTime >= startDate.Value);
-        }
+        if (startDate.HasValue) query = query.Where(r => r.RequestStartTime >= startDate.Value);
 
-        if (endDate.HasValue)
-        {
-            query = query.Where(r => r.RequestStartTime <= endDate.Value);
-        }
+        if (endDate.HasValue) query = query.Where(r => r.RequestStartTime <= endDate.Value);
 
         return await query
             .OrderByDescending(r => r.RequestStartTime)

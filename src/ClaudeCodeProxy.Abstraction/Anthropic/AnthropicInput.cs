@@ -1,10 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ClaudeCodeProxy.Abstraction;
-using ClaudeCodeProxy.Abstraction.Anthropic;
 
-namespace Thor.Abstractions.Anthropic;
+namespace ClaudeCodeProxy.Abstraction.Anthropic;
 
 public sealed class AnthropicInput
 {
@@ -17,6 +15,8 @@ public sealed class AnthropicInput
     [JsonPropertyName("messages")] public IList<AnthropicMessageInput> Messages { get; set; }
 
     [JsonPropertyName("tools")] public IList<AnthropicMessageTool>? Tools { get; set; }
+
+    [JsonPropertyName("betas")] public object? Betas { get; set; }
 
     [JsonPropertyName("tool_choice")]
     public object ToolChoiceCalculated
@@ -45,13 +45,13 @@ public sealed class AnthropicInput
         }
     }
 
-    [JsonIgnore] public string ToolChoiceString { get; set; }
+    [JsonIgnore] public string? ToolChoiceString { get; set; }
 
     [JsonIgnore] public AnthropicTooChoiceInput? ToolChoice { get; set; }
 
     [JsonIgnore] public IList<AnthropicMessageContent>? Systems { get; set; }
 
-    [JsonIgnore] public string System { get; set; }
+    [JsonIgnore] public string? System { get; set; }
 
     [JsonPropertyName("system")]
     public object SystemCalculated
@@ -86,6 +86,37 @@ public sealed class AnthropicInput
     [JsonPropertyName("temperature")] public double? Temperature { get; set; }
 
     [JsonPropertyName("metadata")] public Dictionary<string, object>? Metadata { get; set; }
+
+    [JsonPropertyName("stop_reason")] public string? StopReason { get; set; }
+    
+    [JsonPropertyName("mcp_servers")] public AnthropicMcpServersInput? McpServers { get; set; }
+}
+
+public class AnthropicMcpServersInput
+{
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+    
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    
+    [JsonPropertyName("authorization_token")]
+    public string? AuthorizationToken { get; set; }
+    
+    [JsonPropertyName("tool_configuration")]
+    public AnthropicMcpServersToolConfigurationInput? ToolConfiguration { get; set; }
+}
+
+public class AnthropicMcpServersToolConfigurationInput
+{
+    [JsonPropertyName("enabled")]
+    public bool? Enabled { get; set; }
+    
+    [JsonPropertyName("allowed_tools")]
+    public string[]? AllowedTools { get; set; }
 }
 
 public class AnthropicThinkingInput
@@ -113,6 +144,12 @@ public class AnthropicMessageTool
     [JsonPropertyName("description")] public string? Description { get; set; }
 
     [JsonPropertyName("input_schema")] public InputSchema? InputSchema { get; set; }
+
+    [JsonPropertyName("max_uses")] public string? MaxUses { get; set; }
+
+    [JsonPropertyName("allowed_domains")] public string[]? AllowedDomains { get; set; }
+
+    [JsonPropertyName("blocked_domains")] public string[]? BlockedDomains { get; set; }
 }
 
 public class InputSchema
@@ -130,10 +167,5 @@ public class InputSchemaValue
 
     public string description { get; set; }
 
-    public InputSchemaValueItems? items { get; set; }
-}
-
-public class InputSchemaValueItems
-{
-    public string? type { get; set; }
+    public InputSchemaValue? items { get; set; }
 }

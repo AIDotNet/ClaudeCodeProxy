@@ -8,5 +8,4 @@ public class SqliteDbContext : MasterDbContext<SqliteDbContext>
     public SqliteDbContext(DbContextOptions<SqliteDbContext> options) : base(options)
     {
     }
-
 }

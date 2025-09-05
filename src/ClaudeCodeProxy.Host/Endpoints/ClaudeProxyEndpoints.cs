@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// Claude代理相关端点
+///     Claude代理相关端点
 /// </summary>
 public static class ClaudeProxyEndpoints
 {
     /// <summary>
-    /// 配置Claude代理相关路由
+    ///     配置Claude代理相关路由
     /// </summary>
     public static void MapClaudeProxyEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -34,7 +34,7 @@ public static class ClaudeProxyEndpoints
     }
 
     /// <summary>
-    /// 生成OAuth授权URL
+    ///     生成OAuth授权URL
     /// </summary>
     private static async Task<Results<Ok<GenerateAuthUrlResult>, BadRequest<string>>> GenerateAuthUrl(
         GenerateAuthUrlInput request,
@@ -52,7 +52,7 @@ public static class ClaudeProxyEndpoints
     }
 
     /// <summary>
-    /// 交换授权码获取访问令牌
+    ///     交换授权码获取访问令牌
     /// </summary>
     private static async Task<Results<Ok<object>, BadRequest<string>>> ExchangeCode(
         ExchangeCodeInput request,

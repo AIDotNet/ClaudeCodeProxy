@@ -1,13 +1,12 @@
 using System.Text.Json;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 审计日志服务
+///     审计日志服务
 /// </summary>
 public class AuditLogService(
     IContext context,
@@ -15,7 +14,7 @@ public class AuditLogService(
     ILogger<AuditLogService> logger)
 {
     /// <summary>
-    /// 记录用户账户绑定操作日志
+    ///     记录用户账户绑定操作日志
     /// </summary>
     public async Task LogUserAccountBindingAsync(
         Guid userId,
@@ -28,20 +27,20 @@ public class AuditLogService(
         CancellationToken cancellationToken = default)
     {
         await LogAsync(
-            userId: userId,
-            action: action,
-            resourceType: "UserAccountBinding",
-            resourceId: accountId,
-            details: $"用户 {userId} 对账户 {accountId} 执行 {action} 操作",
-            oldValues: oldValues,
-            newValues: newValues,
-            result: result,
-            errorMessage: errorMessage,
-            cancellationToken: cancellationToken);
+            userId,
+            action,
+            "UserAccountBinding",
+            accountId,
+            $"用户 {userId} 对账户 {accountId} 执行 {action} 操作",
+            oldValues,
+            newValues,
+            result,
+            errorMessage,
+            cancellationToken);
     }
 
     /// <summary>
-    /// 记录API Key账户绑定操作日志
+    ///     记录API Key账户绑定操作日志
     /// </summary>
     public async Task LogApiKeyAccountBindingAsync(
         Guid userId,
@@ -54,20 +53,20 @@ public class AuditLogService(
         CancellationToken cancellationToken = default)
     {
         await LogAsync(
-            userId: userId,
-            action: action,
-            resourceType: "ApiKeyAccountBinding",
-            resourceId: apiKeyId.ToString(),
-            details: $"用户 {userId} 对API Key {apiKeyId} 执行 {action} 操作",
-            oldValues: oldValues,
-            newValues: newValues,
-            result: result,
-            errorMessage: errorMessage,
-            cancellationToken: cancellationToken);
+            userId,
+            action,
+            "ApiKeyAccountBinding",
+            apiKeyId.ToString(),
+            $"用户 {userId} 对API Key {apiKeyId} 执行 {action} 操作",
+            oldValues,
+            newValues,
+            result,
+            errorMessage,
+            cancellationToken);
     }
 
     /// <summary>
-    /// 记录账户访问日志
+    ///     记录账户访问日志
     /// </summary>
     public async Task LogAccountAccessAsync(
         Guid userId,
@@ -79,20 +78,20 @@ public class AuditLogService(
         CancellationToken cancellationToken = default)
     {
         await LogAsync(
-            userId: userId,
-            action: action,
-            resourceType: "Account",
-            resourceId: accountId,
-            details: details ?? $"用户 {userId} 访问账户 {accountId}",
-            oldValues: null,
-            newValues: null,
-            result: result,
-            errorMessage: errorMessage,
-            cancellationToken: cancellationToken);
+            userId,
+            action,
+            "Account",
+            accountId,
+            details ?? $"用户 {userId} 访问账户 {accountId}",
+            null,
+            null,
+            result,
+            errorMessage,
+            cancellationToken);
     }
 
     /// <summary>
-    /// 记录通用审计日志
+    ///     记录通用审计日志
     /// </summary>
     public async Task LogAsync(
         Guid userId,
@@ -132,7 +131,8 @@ public class AuditLogService(
             context.AuditLogs.Add(auditLog);
             await context.SaveAsync(cancellationToken);
 
-            logger.LogInformation("审计日志已记录: 用户 {UserId} 执行 {Action} 操作，资源类型: {ResourceType}，资源ID: {ResourceId}，结果: {Result}",
+            logger.LogInformation(
+                "审计日志已记录: 用户 {UserId} 执行 {Action} 操作，资源类型: {ResourceType}，资源ID: {ResourceId}，结果: {Result}",
                 userId, action, resourceType, resourceId, result);
         }
         catch (Exception ex)
@@ -144,7 +144,7 @@ public class AuditLogService(
     }
 
     /// <summary>
-    /// 获取客户端IP地址
+    ///     获取客户端IP地址
     /// </summary>
     private static string? GetClientIpAddress(HttpContext? httpContext)
     {
@@ -153,24 +153,19 @@ public class AuditLogService(
         // 检查X-Forwarded-For头（如果使用代理）
         var xForwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (!string.IsNullOrEmpty(xForwardedFor))
-        {
             // X-Forwarded-For可能包含多个IP，取第一个
             return xForwardedFor.Split(',')[0].Trim();
-        }
 
         // 检查X-Real-IP头
         var xRealIp = httpContext.Request.Headers["X-Real-IP"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(xRealIp))
-        {
-            return xRealIp;
-        }
+        if (!string.IsNullOrEmpty(xRealIp)) return xRealIp;
 
         // 使用RemoteIpAddress
         return httpContext.Connection.RemoteIpAddress?.ToString();
     }
 
     /// <summary>
-    /// 查询审计日志
+    ///     查询审计日志
     /// </summary>
     public async Task<List<AuditLog>> GetAuditLogsAsync(
         Guid? userId = null,
@@ -185,35 +180,17 @@ public class AuditLogService(
     {
         var query = context.AuditLogs.AsQueryable();
 
-        if (userId.HasValue)
-        {
-            query = query.Where(x => x.UserId == userId.Value);
-        }
+        if (userId.HasValue) query = query.Where(x => x.UserId == userId.Value);
 
-        if (!string.IsNullOrEmpty(action))
-        {
-            query = query.Where(x => x.Action == action);
-        }
+        if (!string.IsNullOrEmpty(action)) query = query.Where(x => x.Action == action);
 
-        if (!string.IsNullOrEmpty(resourceType))
-        {
-            query = query.Where(x => x.ResourceType == resourceType);
-        }
+        if (!string.IsNullOrEmpty(resourceType)) query = query.Where(x => x.ResourceType == resourceType);
 
-        if (!string.IsNullOrEmpty(resourceId))
-        {
-            query = query.Where(x => x.ResourceId == resourceId);
-        }
+        if (!string.IsNullOrEmpty(resourceId)) query = query.Where(x => x.ResourceId == resourceId);
 
-        if (startDate.HasValue)
-        {
-            query = query.Where(x => x.CreatedAt >= startDate.Value);
-        }
+        if (startDate.HasValue) query = query.Where(x => x.CreatedAt >= startDate.Value);
 
-        if (endDate.HasValue)
-        {
-            query = query.Where(x => x.CreatedAt <= endDate.Value);
-        }
+        if (endDate.HasValue) query = query.Where(x => x.CreatedAt <= endDate.Value);
 
         return await query
             .OrderByDescending(x => x.CreatedAt)

@@ -8,7 +8,8 @@ namespace Thor.Abstractions.ObjectModels.ObjectModels.RequestModels;
 /// <summary>
 ///     Create Completion Request Model
 /// </summary>
-public record CompletionCreateRequest :  IOpenAiModels.ITemperature, IOpenAiModels.IModel, IOpenAiModels.ILogProbsRequest, IOpenAiModels.IUser
+public record CompletionCreateRequest : IOpenAiModels.ITemperature, IOpenAiModels.IModel,
+    IOpenAiModels.ILogProbsRequest, IOpenAiModels.IUser
 {
     /// <summary>
     ///     The prompt(s) to generate completions for, encoded as a string, a list of strings, or a list of token lists.
@@ -34,14 +35,10 @@ public record CompletionCreateRequest :  IOpenAiModels.ITemperature, IOpenAiMode
         get
         {
             if (Prompt != null && PromptAsList != null)
-            {
-                throw new ValidationException("Prompt and PromptAsList can not be assigned at the same time. One of them is should be null.");
-            }
+                throw new ValidationException(
+                    "Prompt and PromptAsList can not be assigned at the same time. One of them is should be null.");
 
-            if (Prompt != null)
-            {
-                return new List<string> {Prompt};
-            }
+            if (Prompt != null) return new List<string> { Prompt };
 
 
             return PromptAsList;
@@ -118,14 +115,10 @@ public record CompletionCreateRequest :  IOpenAiModels.ITemperature, IOpenAiMode
         get
         {
             if (Stop != null && StopAsList != null)
-            {
-                throw new ValidationException("Stop and StopAsList can not be assigned at the same time. One of them is should be null.");
-            }
+                throw new ValidationException(
+                    "Stop and StopAsList can not be assigned at the same time. One of them is should be null.");
 
-            if (Stop != null)
-            {
-                return new List<string> {Stop};
-            }
+            if (Stop != null) return new List<string> { Stop };
 
             return StopAsList;
         }
@@ -185,11 +178,6 @@ public record CompletionCreateRequest :  IOpenAiModels.ITemperature, IOpenAiMode
 
     [JsonPropertyName("model")] public string? Model { get; set; }
 
-    public IEnumerable<ValidationResult> Validate()
-    {
-        throw new NotImplementedException();
-    }
-
     /// <summary>
     ///     What
     ///     <a href="https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277">sampling temperature</a>
@@ -206,4 +194,9 @@ public record CompletionCreateRequest :  IOpenAiModels.ITemperature, IOpenAiMode
     /// </summary>
     [JsonPropertyName("user")]
     public string? User { get; set; }
+
+    public IEnumerable<ValidationResult> Validate()
+    {
+        throw new NotImplementedException();
+    }
 }

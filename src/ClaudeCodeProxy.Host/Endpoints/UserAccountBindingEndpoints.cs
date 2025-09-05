@@ -7,7 +7,7 @@ using ClaudeCodeProxy.Host.Services;
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 用户账户绑定管理端点
+///     用户账户绑定管理端点
 /// </summary>
 public static class UserAccountBindingEndpoints
 {
@@ -90,13 +90,11 @@ public static class UserAccountBindingEndpoints
                 var result = await bindingService.UnbindUserFromAccountAsync(userId, accountId);
 
                 if (!result)
-                {
                     return Results.NotFound(new ApiResponse<object>
                     {
                         Success = false,
                         Message = "绑定关系不存在"
                     });
-                }
 
                 return Results.Ok(new ApiResponse<object>
                 {
@@ -119,13 +117,11 @@ public static class UserAccountBindingEndpoints
                 var result = await bindingService.UpdateBindingPriorityAsync(userId, accountId, priority);
 
                 if (!result)
-                {
                     return Results.NotFound(new ApiResponse<object>
                     {
                         Success = false,
                         Message = "绑定关系不存在"
                     });
-                }
 
                 return Results.Ok(new ApiResponse<object>
                 {

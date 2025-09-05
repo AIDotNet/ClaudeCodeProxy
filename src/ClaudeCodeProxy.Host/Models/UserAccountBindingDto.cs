@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 用户账户绑定数据传输对象
+///     用户账户绑定数据传输对象
 /// </summary>
 public class UserAccountBindingDto
 {
@@ -21,49 +21,49 @@ public class UserAccountBindingDto
 }
 
 /// <summary>
-/// 绑定账户请求
+///     绑定账户请求
 /// </summary>
 public class BindAccountRequest
 {
     [Required(ErrorMessage = "账户ID不能为空")]
     [MaxLength(100, ErrorMessage = "账户ID长度不能超过100个字符")]
     public string AccountId { get; set; } = string.Empty;
-    
+
     [Range(1, 100, ErrorMessage = "优先级必须在1-100之间")]
     public int Priority { get; set; } = 50;
-    
+
     [Required(ErrorMessage = "绑定类型不能为空")]
     [RegularExpression("^(private|shared)$", ErrorMessage = "绑定类型只能是 'private' 或 'shared'")]
     public string BindingType { get; set; } = "private";
-    
+
     [MaxLength(500, ErrorMessage = "备注长度不能超过500个字符")]
     public string? Remarks { get; set; }
 }
 
 /// <summary>
-/// 用户账户绑定请求
+///     用户账户绑定请求
 /// </summary>
 public class UserAccountBindingRequest
 {
     [Required(ErrorMessage = "账户ID不能为空")]
     [MaxLength(100, ErrorMessage = "账户ID长度不能超过100个字符")]
     public string AccountId { get; set; } = string.Empty;
-    
+
     [Required(ErrorMessage = "绑定类型不能为空")]
     [RegularExpression("^(private|shared)$", ErrorMessage = "绑定类型只能是 'private' 或 'shared'")]
     public string BindingType { get; set; } = "private";
-    
+
     [Range(1, 100, ErrorMessage = "优先级必须在1-100之间")]
     public int Priority { get; set; } = 50;
-    
+
     public bool IsEnabled { get; set; } = true;
-    
+
     [MaxLength(500, ErrorMessage = "备注长度不能超过500个字符")]
     public string? Remarks { get; set; }
 }
 
 /// <summary>
-/// 批量更新用户账户绑定请求
+///     批量更新用户账户绑定请求
 /// </summary>
 public class UpdateUserAccountBindingsRequest
 {
@@ -71,7 +71,7 @@ public class UpdateUserAccountBindingsRequest
 }
 
 /// <summary>
-/// 限流信息数据传输对象
+///     限流信息数据传输对象
 /// </summary>
 public class RateLimitInfoDto
 {
@@ -82,7 +82,7 @@ public class RateLimitInfoDto
 }
 
 /// <summary>
-/// 更新绑定优先级请求
+///     更新绑定优先级请求
 /// </summary>
 public class UpdateBindingPriorityRequest
 {
@@ -91,7 +91,7 @@ public class UpdateBindingPriorityRequest
 }
 
 /// <summary>
-/// 设置默认账户请求
+///     设置默认账户请求
 /// </summary>
 public class SetDefaultAccountRequest
 {
@@ -101,27 +101,27 @@ public class SetDefaultAccountRequest
 }
 
 /// <summary>
-/// API Key账户绑定请求
+///     API Key账户绑定请求
 /// </summary>
 public class ApiKeyAccountBindingRequest
 {
     [Required(ErrorMessage = "账户ID不能为空")]
     [MaxLength(100, ErrorMessage = "账户ID长度不能超过100个字符")]
     public string AccountId { get; set; } = string.Empty;
-    
+
     [Range(1, 100, ErrorMessage = "优先级必须在1-100之间")]
     public int Priority { get; set; } = 50;
-    
+
     public bool IsEnabled { get; set; } = true;
 }
 
 /// <summary>
-/// 更新API Key账户绑定请求
+///     更新API Key账户绑定请求
 /// </summary>
 public class UpdateApiKeyAccountBindingsRequest
 {
     [MaxLength(100, ErrorMessage = "默认账户ID长度不能超过100个字符")]
     public string? DefaultAccountId { get; set; }
-    
+
     public List<ApiKeyAccountBindingRequest> AccountBindings { get; set; } = new();
 }

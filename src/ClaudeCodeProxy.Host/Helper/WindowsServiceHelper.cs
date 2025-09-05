@@ -11,7 +11,7 @@ public static class WindowsServiceHelper
     private const string ServiceDescription = "Claude Code Proxy API服务，用于代理Claude AI的API请求";
 
     /// <summary>
-    /// 检查是否为Windows系统
+    ///     检查是否为Windows系统
     /// </summary>
     public static bool IsWindows()
     {
@@ -19,7 +19,7 @@ public static class WindowsServiceHelper
     }
 
     /// <summary>
-    /// 检查是否以管理员权限运行
+    ///     检查是否以管理员权限运行
     /// </summary>
     public static bool IsRunningAsAdministrator()
     {
@@ -39,7 +39,7 @@ public static class WindowsServiceHelper
     }
 
     /// <summary>
-    /// 安装Windows服务
+    ///     安装Windows服务
     /// </summary>
     public static async Task<bool> InstallServiceAsync()
     {
@@ -72,7 +72,8 @@ public static class WindowsServiceHelper
             }
 
             // 使用sc命令安装服务
-            var arguments = $"create \"{ServiceName}\" binpath= \"{executablePath}\" displayname= \"{ServiceDisplayName}\" start= auto";
+            var arguments =
+                $"create \"{ServiceName}\" binpath= \"{executablePath}\" displayname= \"{ServiceDisplayName}\" start= auto";
             var result = await RunScCommandAsync(arguments);
 
             if (result.Success)
@@ -83,11 +84,9 @@ public static class WindowsServiceHelper
                 Console.WriteLine("服务将在系统启动时自动启动。");
                 return true;
             }
-            else
-            {
-                Console.WriteLine($"服务安装失败：{result.Error}");
-                return false;
-            }
+
+            Console.WriteLine($"服务安装失败：{result.Error}");
+            return false;
         }
         catch (Exception ex)
         {
@@ -97,7 +96,7 @@ public static class WindowsServiceHelper
     }
 
     /// <summary>
-    /// 卸载Windows服务
+    ///     卸载Windows服务
     /// </summary>
     public static async Task<bool> UninstallServiceAsync()
     {
@@ -133,11 +132,9 @@ public static class WindowsServiceHelper
                 Console.WriteLine($"服务 '{ServiceDisplayName}' 卸载成功！");
                 return true;
             }
-            else
-            {
-                Console.WriteLine($"服务卸载失败：{result.Error}");
-                return false;
-            }
+
+            Console.WriteLine($"服务卸载失败：{result.Error}");
+            return false;
         }
         catch (Exception ex)
         {
@@ -147,7 +144,7 @@ public static class WindowsServiceHelper
     }
 
     /// <summary>
-    /// 启动Windows服务
+    ///     启动Windows服务
     /// </summary>
     public static async Task<bool> StartServiceAsync()
     {
@@ -160,15 +157,13 @@ public static class WindowsServiceHelper
             Console.WriteLine($"服务 '{ServiceDisplayName}' 启动成功！");
             return true;
         }
-        else
-        {
-            Console.WriteLine($"服务启动失败：{result.Error}");
-            return false;
-        }
+
+        Console.WriteLine($"服务启动失败：{result.Error}");
+        return false;
     }
 
     /// <summary>
-    /// 停止Windows服务
+    ///     停止Windows服务
     /// </summary>
     public static async Task<bool> StopServiceAsync()
     {
@@ -181,15 +176,13 @@ public static class WindowsServiceHelper
             Console.WriteLine($"服务 '{ServiceDisplayName}' 停止成功！");
             return true;
         }
-        else
-        {
-            Console.WriteLine($"服务停止失败：{result.Error}");
-            return false;
-        }
+
+        Console.WriteLine($"服务停止失败：{result.Error}");
+        return false;
     }
 
     /// <summary>
-    /// 检查服务是否已安装
+    ///     检查服务是否已安装
     /// </summary>
     public static async Task<bool> IsServiceInstalledAsync()
     {
@@ -201,7 +194,7 @@ public static class WindowsServiceHelper
     }
 
     /// <summary>
-    /// 运行sc命令
+    ///     运行sc命令
     /// </summary>
     private static async Task<(bool Success, string Output, string Error)> RunScCommandAsync(string arguments)
     {
@@ -231,7 +224,7 @@ public static class WindowsServiceHelper
     }
 
     /// <summary>
-    /// 显示服务状态
+    ///     显示服务状态
     /// </summary>
     public static async Task ShowServiceStatusAsync()
     {
@@ -243,7 +236,7 @@ public static class WindowsServiceHelper
 
         Console.WriteLine($"服务名称: {ServiceName}");
         Console.WriteLine($"显示名称: {ServiceDisplayName}");
-        
+
         var isInstalled = await IsServiceInstalledAsync();
         Console.WriteLine($"安装状态: {(isInstalled ? "已安装" : "未安装")}");
 
@@ -257,4 +250,4 @@ public static class WindowsServiceHelper
             }
         }
     }
-} 
+}

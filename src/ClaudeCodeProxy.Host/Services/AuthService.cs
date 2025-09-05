@@ -1,19 +1,17 @@
-using ClaudeCodeProxy.Host.Env;
+using System.Security.Claims;
 using ClaudeCodeProxy.Host.Models;
-using Making.Jwt;
 using Making.Jwt.Models;
 using Making.Jwt.Services;
-using System.Text.Json;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 认证服务实现
+///     认证服务实现
 /// </summary>
 public class AuthService(IJwtService jwtService, UserService userService, IInvitationService invitationService)
 {
     /// <summary>
-    /// 用户登录
+    ///     用户登录
     /// </summary>
     /// <param name="request">登录请求</param>
     /// <param name="ipAddress">IP地址</param>
@@ -40,7 +38,7 @@ public class AuthService(IJwtService jwtService, UserService userService, IInvit
                 // 添加自定义声明来存储真实的用户ID
                 CustomClaims = new Dictionary<string, object>
                 {
-                    [System.Security.Claims.ClaimTypes.NameIdentifier] = user.Id.ToString()
+                    [ClaimTypes.NameIdentifier] = user.Id.ToString()
                 }
             };
 
@@ -79,7 +77,7 @@ public class AuthService(IJwtService jwtService, UserService userService, IInvit
     }
 
     /// <summary>
-    /// 用户注册
+    ///     用户注册
     /// </summary>
     /// <param name="request">注册请求</param>
     /// <param name="ipAddress">IP地址</param>
@@ -106,7 +104,7 @@ public class AuthService(IJwtService jwtService, UserService userService, IInvit
                 // 添加自定义声明来存储真实的用户ID
                 CustomClaims = new Dictionary<string, object>
                 {
-                    [System.Security.Claims.ClaimTypes.NameIdentifier] = user.Id.ToString()
+                    [ClaimTypes.NameIdentifier] = user.Id.ToString()
                 }
             };
 

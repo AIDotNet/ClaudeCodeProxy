@@ -8,8 +8,7 @@ public class ResponsesSSEDto<T>
 
     [JsonPropertyName("sequence_number")] public int SequenceNumber { get; set; }
 
-    [System.Text.Json.Serialization.JsonPropertyName("response")]
-    public T Response { get; set; }
+    [JsonPropertyName("response")] public T Response { get; set; }
 
     [JsonPropertyName("delta")] public string? Delta { get; set; }
 
@@ -45,7 +44,6 @@ public class ResponsesSSEDtoItem
     [JsonPropertyName("status")] public string Status { get; set; }
 
     [JsonPropertyName("content")] public ResponsesSSEDtoPart[] Content { get; set; }
-    
-    [JsonPropertyName("role")]
-    public string Role { get; set; }
+
+    [JsonPropertyName("role")] public string Role { get; set; }
 }

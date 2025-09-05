@@ -7,4 +7,3 @@ public interface IAuditable
     DateTime? ModifiedAt { get; set; }
     string? ModifiedBy { get; set; }
 }
-

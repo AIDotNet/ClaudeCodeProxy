@@ -1,5 +1,4 @@
 ﻿using ClaudeCodeProxy.Domain;
-using ClaudeCodeProxy.Host.Helper;
 
 namespace ClaudeCodeProxy.Host.Models;
 

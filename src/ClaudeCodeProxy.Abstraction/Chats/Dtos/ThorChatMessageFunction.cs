@@ -29,7 +29,7 @@ public class ThorChatMessageFunction
     /// <returns></returns>
     public Dictionary<string, object> ParseArguments()
     {
-        var result = string.IsNullOrWhiteSpace(Arguments) == false
+        var result = !string.IsNullOrWhiteSpace(Arguments)
             ? JsonSerializer.Deserialize<Dictionary<string, object>>(Arguments)
             : new Dictionary<string, object>();
         return result;

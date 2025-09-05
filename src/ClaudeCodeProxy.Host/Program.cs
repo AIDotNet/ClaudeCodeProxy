@@ -1,26 +1,23 @@
-using System.Net.Http.Headers;
-using ClaudeCodeProxy.Abstraction.Chats;
-using ClaudeCodeProxy.Host.Env;
-using ClaudeCodeProxy.Host.Services;
-using ClaudeCodeProxy.Host.Endpoints;
-using ClaudeCodeProxy.Host.Filters;
-using ClaudeCodeProxy.Core;
-using ClaudeCodeProxy.Core.AI;
-using ClaudeCodeProxy.Core.Extensions;
-using ClaudeCodeProxy.EntityFrameworkCore.Sqlite;
-using ClaudeCodeProxy.Host.Helper;
-using Making.Jwt.Extensions;
-using Making.AspNetCore;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Sqlite;
-using Scalar.AspNetCore;
-using Serilog;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Core.Extensions;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL;
+using ClaudeCodeProxy.EntityFrameworkCore.Sqlite;
+using ClaudeCodeProxy.Host.Endpoints;
+using ClaudeCodeProxy.Host.Env;
+using ClaudeCodeProxy.Host.Filters;
+using ClaudeCodeProxy.Host.Helper;
 using ClaudeCodeProxy.Host.Middlewares;
+using ClaudeCodeProxy.Host.Services;
 using ClaudeCodeProxy.Host.Services.AI;
+using Making.Jwt.Extensions;
 using Mapster;
+using Scalar.AspNetCore;
+using Serilog;
 
 namespace ClaudeCodeProxy.Host;
 
@@ -29,22 +26,16 @@ public static class Program
     public static async Task Main(string[] args)
     {
         // 处理命令行参数
-        if (await HandleCommandLineArgumentsAsync(args))
-        {
-            return;
-        }
+        if (await HandleCommandLineArgumentsAsync(args)) return;
 
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions()
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             Args = args,
-            ContentRootPath = AppDomain.CurrentDomain.BaseDirectory,
+            ContentRootPath = AppDomain.CurrentDomain.BaseDirectory
         });
 
         // 如果是Windows系统，配置为Windows服务
-        if (WindowsServiceHelper.IsWindows())
-        {
-            builder.Host.UseWindowsService();
-        }
+        if (WindowsServiceHelper.IsWindows()) builder.Host.UseWindowsService();
 
         EnvHelper.Initialize(builder.Configuration);
 
@@ -188,31 +179,30 @@ public static class Program
             var maxInvitations = EnvHelper.MaxInvitations;
 
             // 只有当数据库中没有设置时才初始化
-            var existingInviterReward = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInviterReward);
+            var existingInviterReward =
+                await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInviterReward);
             if (string.IsNullOrEmpty(existingInviterReward))
-            {
-                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultInviterReward, inviterReward.ToString());
-            }
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultInviterReward,
+                    inviterReward.ToString());
 
-            var existingInvitedReward = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInvitedReward);
+            var existingInvitedReward =
+                await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInvitedReward);
             if (string.IsNullOrEmpty(existingInvitedReward))
-            {
-                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultInvitedReward, invitedReward.ToString());
-            }
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultInvitedReward,
+                    invitedReward.ToString());
 
-            var existingMaxInvitations = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultMaxInvitations);
+            var existingMaxInvitations =
+                await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultMaxInvitations);
             if (string.IsNullOrEmpty(existingMaxInvitations))
-            {
-                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultMaxInvitations, maxInvitations.ToString());
-            }
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultMaxInvitations,
+                    maxInvitations.ToString());
 
-            var existingInvitationEnabled = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.InvitationEnabled);
+            var existingInvitationEnabled =
+                await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.InvitationEnabled);
             if (string.IsNullOrEmpty(existingInvitationEnabled))
-            {
                 await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.InvitationEnabled, "true");
-            }
 
-            Log.Information("邀请设置初始化完成: 邀请人奖励={InviterReward}, 被邀请人奖励={InvitedReward}, 最大邀请数={MaxInvitations}", 
+            Log.Information("邀请设置初始化完成: 邀请人奖励={InviterReward}, 被邀请人奖励={InvitedReward}, 最大邀请数={MaxInvitations}",
                 inviterReward, invitedReward, maxInvitations);
         }
         catch (Exception ex)
@@ -248,7 +238,7 @@ public static class Program
         services.AddLogging(loggingBuilder =>
         {
             loggingBuilder.ClearProviders();
-            loggingBuilder.AddSerilog(Log.Logger, dispose: true);
+            loggingBuilder.AddSerilog(Log.Logger, true);
         });
     }
 
@@ -259,20 +249,20 @@ public static class Program
             options.SerializerOptions.WriteIndented = true;
             options.SerializerOptions.IncludeFields = true;
             options.SerializerOptions.Converters.Add(
-                new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy
+                new JsonStringEnumConverter(JsonNamingPolicy
                     .CamelCase));
             options.SerializerOptions.DefaultIgnoreCondition =
-                System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+                JsonIgnoreCondition.WhenWritingNull;
         });
 
         services.AddHttpClient()
-            .ConfigureHttpClientDefaults((builder =>
+            .ConfigureHttpClientDefaults(builder =>
             {
-                builder.ConfigureHttpClient((client =>
+                builder.ConfigureHttpClient(client =>
                 {
                     client.DefaultRequestHeaders.UserAgent.ParseAdd("ClaudeCodeProxy/1.0");
-                }));
-            }));
+                });
+            });
 
         services.AddSingleton<GlobalMiddleware>();
         services.AddMemoryCache();
@@ -285,9 +275,7 @@ public static class Program
 
         if (configuration.GetConnectionString("Type").Equals("SQLite", StringComparison.OrdinalIgnoreCase))
         {
-            
             services.AddEntityFrameworkCoreSqlite(configuration);
-        
         }
         else if (configuration.GetConnectionString("Type").Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
         {
@@ -323,7 +311,7 @@ public static class Program
         services.AddScoped<IUserContext, UserContext>();
 
         services.AddCoreServices();
-        
+
         services.AddMapster();
 
         services.AddResponseCompression();
@@ -337,10 +325,10 @@ public static class Program
         // 配置JSON序列化选项
         services.ConfigureHttpJsonOptions(options =>
         {
-            options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.SerializerOptions.WriteIndented = true;
             options.SerializerOptions.Converters.Add(
-                new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy
+                new JsonStringEnumConverter(JsonNamingPolicy
                     .CamelCase));
         });
 
@@ -420,15 +408,15 @@ public static class Program
             {
                 var info = new
                 {
-                    Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
                     Framework = RuntimeInformation.FrameworkDescription,
                     OS = RuntimeInformation.OSDescription,
                     Architecture = RuntimeInformation.OSArchitecture.ToString(),
                     IsWindows = WindowsServiceHelper.IsWindows(),
-                    ProcessId = Environment.ProcessId,
+                    Environment.ProcessId,
                     WorkingDirectory = Environment.CurrentDirectory,
-                    MachineName = Environment.MachineName,
-                    UserName = Environment.UserName,
+                    Environment.MachineName,
+                    Environment.UserName,
                     Timestamp = DateTime.Now
                 };
                 return Results.Ok(info);

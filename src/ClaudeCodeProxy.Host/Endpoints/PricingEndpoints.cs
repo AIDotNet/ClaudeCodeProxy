@@ -1,17 +1,15 @@
 using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 价格管理相关端点
+///     价格管理相关端点
 /// </summary>
 public static class PricingEndpoints
 {
     /// <summary>
-    /// 配置价格管理相关端点
+    ///     配置价格管理相关端点
     /// </summary>
     public static void MapPricingEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -76,7 +74,7 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 获取所有模型价格配置
+    ///     获取所有模型价格配置
     /// </summary>
     private static IResult GetAllModelPricing(PricingService pricingService)
     {
@@ -89,17 +87,15 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 更新模型价格配置
+    ///     更新模型价格配置
     /// </summary>
     private static async Task<IResult> UpdateModelPricing(ModelPricing pricing, PricingService pricingService)
     {
         if (string.IsNullOrEmpty(pricing.Model))
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "模型名称不能为空"
             });
-        }
 
         try
         {
@@ -119,17 +115,15 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 启用模型
+    ///     启用模型
     /// </summary>
     private static async Task<IResult> EnableModel(string modelName, PricingService pricingService)
     {
         if (string.IsNullOrEmpty(modelName))
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "模型名称不能为空"
             });
-        }
 
         try
         {
@@ -149,21 +143,18 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 禁用模型
+    ///     禁用模型
     /// </summary>
     private static async Task<bool> DisableModel(string modelName, PricingService pricingService)
     {
-        if (string.IsNullOrEmpty(modelName))
-        {
-            return false;
-        }
+        if (string.IsNullOrEmpty(modelName)) return false;
 
         await pricingService.SetModelEnabledAsync(modelName);
         return true;
     }
 
     /// <summary>
-    /// 获取所有汇率配置
+    ///     获取所有汇率配置
     /// </summary>
     private static IResult GetAllExchangeRates(PricingService pricingService)
     {
@@ -176,25 +167,21 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 更新汇率
+    ///     更新汇率
     /// </summary>
     private static IResult UpdateExchangeRate(UpdateExchangeRateRequest request, PricingService pricingService)
     {
         if (string.IsNullOrEmpty(request.FromCurrency) || string.IsNullOrEmpty(request.ToCurrency))
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "货币类型不能为空"
             });
-        }
 
         if (request.Rate <= 0)
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "汇率必须大于0"
             });
-        }
 
         pricingService.UpdateExchangeRate(request.FromCurrency, request.ToCurrency, request.Rate);
 
@@ -205,17 +192,15 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 计算费用预览
+    ///     计算费用预览
     /// </summary>
     private static IResult CalculateCost(CalculateCostRequest request, PricingService pricingService)
     {
         if (string.IsNullOrEmpty(request.Model))
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "模型名称不能为空"
             });
-        }
 
         var totalCost = pricingService.CalculateTokenCost(
             request.Model,
@@ -244,25 +229,21 @@ public static class PricingEndpoints
     }
 
     /// <summary>
-    /// 货币转换
+    ///     货币转换
     /// </summary>
     private static IResult ConvertCurrency(CurrencyConversionRequest request, PricingService pricingService)
     {
         if (request.Amount <= 0)
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "转换金额必须大于0"
             });
-        }
 
         if (string.IsNullOrEmpty(request.FromCurrency) || string.IsNullOrEmpty(request.ToCurrency))
-        {
             return Results.BadRequest(new ApiResponse<object>
             {
                 Message = "货币类型不能为空"
             });
-        }
 
         var convertedAmount = pricingService.ConvertCurrency(request.Amount, request.FromCurrency, request.ToCurrency);
         var exchangeRate = pricingService.GetExchangeRate(request.FromCurrency, request.ToCurrency);
@@ -286,7 +267,7 @@ public static class PricingEndpoints
 }
 
 /// <summary>
-/// 更新汇率请求
+///     更新汇率请求
 /// </summary>
 public class UpdateExchangeRateRequest
 {
@@ -296,7 +277,7 @@ public class UpdateExchangeRateRequest
 }
 
 /// <summary>
-/// 计算费用请求
+///     计算费用请求
 /// </summary>
 public class CalculateCostRequest
 {
@@ -309,7 +290,7 @@ public class CalculateCostRequest
 }
 
 /// <summary>
-/// 货币转换请求
+///     货币转换请求
 /// </summary>
 public class CurrencyConversionRequest
 {
@@ -319,7 +300,7 @@ public class CurrencyConversionRequest
 }
 
 /// <summary>
-/// 货币转换结果
+///     货币转换结果
 /// </summary>
 public class CurrencyConversionResult
 {

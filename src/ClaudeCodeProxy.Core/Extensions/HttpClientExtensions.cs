@@ -30,15 +30,11 @@ public static class HttpClientExtensions
         };
 
         if (!string.IsNullOrWhiteSpace(token))
-        {
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
 
         foreach (var kv in headers)
-        {
             if (!req.Headers.Contains(kv.Key))
                 req.Headers.TryAddWithoutValidation(kv.Key, kv.Value);
-        }
 
         return await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
     }
@@ -52,20 +48,14 @@ public static class HttpClientExtensions
         };
 
         if (!string.IsNullOrWhiteSpace(token))
-        {
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
 
         foreach (var kv in headers)
-        {
             if (!req.Headers.Contains(kv.Key))
                 req.Headers.TryAddWithoutValidation(kv.Key, kv.Value);
-        }
 
         if (url.StartsWith("https://chatgpt.com/backend-api/codex", StringComparison.OrdinalIgnoreCase))
-        {
             req.Headers.Host = "chatgpt.com";
-        }
 
         return await httpClient.SendAsync(req).ConfigureAwait(false);
     }

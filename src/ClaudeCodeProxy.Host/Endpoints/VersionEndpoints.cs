@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 版本管理相关端点
+///     版本管理相关端点
 /// </summary>
 public static class VersionEndpoints
 {
     /// <summary>
-    /// 配置版本管理相关端点
+    ///     配置版本管理相关端点
     /// </summary>
     public static void MapVersionEndpoints(this IEndpointRouteBuilder app)
     {
@@ -41,13 +41,13 @@ public static class VersionEndpoints
     }
 
     /// <summary>
-    /// 获取当前版本
+    ///     获取当前版本
     /// </summary>
     private static Ok<VersionInfo> GetCurrentVersion(
         [FromServices] VersionService versionService)
     {
         var currentVersion = versionService.GetCurrentVersion();
-        
+
         return TypedResults.Ok(new VersionInfo
         {
             Version = currentVersion,
@@ -56,7 +56,7 @@ public static class VersionEndpoints
     }
 
     /// <summary>
-    /// 检查更新
+    ///     检查更新
     /// </summary>
     private static async Task<Results<Ok<VersionCheckResult>, BadRequest<string>>> CheckForUpdates(
         [FromServices] VersionService versionService,
@@ -74,7 +74,7 @@ public static class VersionEndpoints
     }
 
     /// <summary>
-    /// 获取最新版本信息
+    ///     获取最新版本信息
     /// </summary>
     private static async Task<Results<Ok<GitHubReleaseInfo>, NotFound<string>, BadRequest<string>>> GetLatestVersion(
         [FromServices] VersionService versionService,
@@ -83,11 +83,8 @@ public static class VersionEndpoints
         try
         {
             var latestRelease = await versionService.GetLatestVersionAsync(cancellationToken);
-            
-            if (latestRelease == null)
-            {
-                return TypedResults.NotFound("无法获取最新版本信息");
-            }
+
+            if (latestRelease == null) return TypedResults.NotFound("无法获取最新版本信息");
 
             return TypedResults.Ok(latestRelease);
         }
@@ -99,17 +96,17 @@ public static class VersionEndpoints
 }
 
 /// <summary>
-/// 版本信息
+///     版本信息
 /// </summary>
 public class VersionInfo
 {
     /// <summary>
-    /// 版本号
+    ///     版本号
     /// </summary>
     public string Version { get; set; } = string.Empty;
 
     /// <summary>
-    /// 时间戳
+    ///     时间戳
     /// </summary>
     public DateTime Timestamp { get; set; }
 }

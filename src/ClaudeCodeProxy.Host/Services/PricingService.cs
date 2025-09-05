@@ -1,19 +1,18 @@
+using System.Collections.Concurrent;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Host.Models;
-using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 价格管理服务
+///     价格管理服务
 /// </summary>
 public class PricingService
 {
+    private readonly ConcurrentDictionary<string, ExchangeRate> _exchangeRates = new();
     private readonly ILogger<PricingService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ConcurrentDictionary<string, ExchangeRate> _exchangeRates = new();
 
     public PricingService(ILogger<PricingService> logger, IServiceProvider serviceProvider)
     {
@@ -24,7 +23,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 初始化默认价格配置 - 不需要，直接在计算时使用switch语句
+    ///     初始化默认价格配置 - 不需要，直接在计算时使用switch语句
     /// </summary>
     private void InitializeDefaultPricing()
     {
@@ -33,7 +32,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 初始化默认汇率配置
+    ///     初始化默认汇率配置
     /// </summary>
     private void InitializeDefaultExchangeRates()
     {
@@ -56,7 +55,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 计算Token费用 - 始终以USD为基准计算，汇率转换由前端显示时处理
+    ///     计算Token费用 - 始终以USD为基准计算，汇率转换由前端显示时处理
     /// </summary>
     public decimal CalculateTokenCost(string model, int inputTokens, int outputTokens,
         int cacheCreateTokens = 0, int cacheReadTokens = 0)
@@ -122,7 +121,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 获取汇率 - 用于前端显示时的货币转换
+    ///     获取汇率 - 用于前端显示时的货币转换
     /// </summary>
     public ExchangeRate? GetExchangeRate(string fromCurrency, string toCurrency)
     {
@@ -131,7 +130,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 转换货币金额 - 用于前端显示
+    ///     转换货币金额 - 用于前端显示
     /// </summary>
     public decimal ConvertCurrency(decimal amount, string fromCurrency, string toCurrency)
     {
@@ -153,7 +152,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 更新汇率
+    ///     更新汇率
     /// </summary>
     public void UpdateExchangeRate(string fromCurrency, string toCurrency, decimal rate)
     {
@@ -172,7 +171,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 获取所有支持的模型 - 基于switch语句
+    ///     获取所有支持的模型 - 基于switch语句
     /// </summary>
     public IEnumerable<string> GetAllSupportedModels()
     {
@@ -185,9 +184,9 @@ public class PricingService
     }
 
     /// <summary>
-    /// 获取所有模型价格信息 - 用于API返回（包含所有模型，无论启用状态）
+    ///     获取所有模型价格信息 - 用于API返回（包含所有模型，无论启用状态）
     /// </summary>
-    public IEnumerable<Models.ModelPricing> GetAllModelPricing()
+    public IEnumerable<ModelPricing> GetAllModelPricing()
     {
         try
         {
@@ -198,8 +197,7 @@ public class PricingService
             var dbPricings = context.ModelPricings.ToList();
 
             if (dbPricings.Any())
-            {
-                return dbPricings.Select(p => new Models.ModelPricing
+                return dbPricings.Select(p => new ModelPricing
                 {
                     Model = p.Model,
                     InputPrice = p.InputPrice,
@@ -210,7 +208,6 @@ public class PricingService
                     Description = p.Description,
                     IsEnabled = p.IsEnabled // 添加启用状态字段
                 }).ToList();
-            }
         }
         catch (Exception ex)
         {
@@ -218,7 +215,7 @@ public class PricingService
         }
 
         // 降级使用静态数据
-        return ModelPricing.AllModels.Select(p => new Models.ModelPricing
+        return ModelPricing.AllModels.Select(p => new ModelPricing
         {
             Model = p.Model,
             InputPrice = p.InputPrice,
@@ -232,9 +229,9 @@ public class PricingService
     }
 
     /// <summary>
-    /// 更新模型价格配置
+    ///     更新模型价格配置
     /// </summary>
-    public async Task UpdateModelPricingAsync(Models.ModelPricing pricing)
+    public async Task UpdateModelPricingAsync(ModelPricing pricing)
     {
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<IContext>();
@@ -277,7 +274,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 设置模型启用状态
+    ///     设置模型启用状态
     /// </summary>
     public async Task SetModelEnabledAsync(string modelName)
     {
@@ -296,7 +293,7 @@ public class PricingService
     }
 
     /// <summary>
-    /// 获取所有汇率
+    ///     获取所有汇率
     /// </summary>
     public IEnumerable<ExchangeRate> GetAllExchangeRates()
     {

@@ -19,10 +19,7 @@ public class GlobalMiddleware : IMiddleware
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         // 如果响应已经开始，不能再设置状态码
-        if (context.Response.HasStarted)
-        {
-            return;
-        }
+        if (context.Response.HasStarted) return;
 
         context.Response.ContentType = "application/json";
 
@@ -31,7 +28,7 @@ public class GlobalMiddleware : IMiddleware
 
         var errorResponse = new
         {
-            message = message,
+            message,
             success = false,
             error = new
             {
@@ -50,14 +47,14 @@ public class GlobalMiddleware : IMiddleware
             // JWT/认证相关异常
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "访问令牌已过期或无效，请重新登录"),
             SecurityException => (StatusCodes.Status401Unauthorized, "安全验证失败，请重新登录"),
-            
+
             // 检查异常消息中的关键词来判断是否为JWT相关异常
             _ when IsJwtRelatedError(exception) => (StatusCodes.Status401Unauthorized, "身份验证已过期，请重新登录"),
-            
+
             // 其他业务异常
             ArgumentException => (StatusCodes.Status400BadRequest, exception.Message),
             InvalidOperationException => (StatusCodes.Status400BadRequest, exception.Message),
-            
+
             // 默认500错误
             _ => (StatusCodes.Status500InternalServerError, exception.Message)
         };
@@ -67,13 +64,13 @@ public class GlobalMiddleware : IMiddleware
     {
         var message = exception.Message.ToLowerInvariant();
         var type = exception.GetType().Name.ToLowerInvariant();
-        
+
         var jwtKeywords = new[]
         {
             "token", "jwt", "bearer", "expired", "invalid", "unauthorized",
             "authentication", "authorization", "signature", "claim"
         };
-        
+
         return jwtKeywords.Any(keyword => message.Contains(keyword) || type.Contains(keyword));
     }
 }

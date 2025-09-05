@@ -1,20 +1,19 @@
+using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
-using ClaudeCodeProxy.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
-using System.Security.Claims;
-using ClaudeCodeProxy.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// API Key 相关端点
+///     API Key 相关端点
 /// </summary>
 public static class ApiKeyEndpoints
 {
     /// <summary>
-    /// 配置API Key相关路由
+    ///     配置API Key相关路由
     /// </summary>
     public static void MapApiKeyEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -61,21 +60,21 @@ public static class ApiKeyEndpoints
         group.MapPatch("/{id:guid}/enable", EnableApiKey)
             .WithName("EnableApiKey")
             .WithSummary("启用API Key")
-            .Produces<ApiResponse>(200)
+            .Produces<ApiResponse>()
             .Produces<ApiResponse>(404);
 
         // 禁用API Key
         group.MapPatch("/{id:guid}/disable", DisableApiKey)
             .WithName("DisableApiKey")
             .WithSummary("禁用API Key")
-            .Produces<ApiResponse>(200)
+            .Produces<ApiResponse>()
             .Produces<ApiResponse>(404);
 
         // 切换API Key启用状态
         group.MapPatch("/{id:guid}/toggle", ToggleApiKeyEnabled)
             .WithName("ToggleApiKeyEnabled")
             .WithSummary("切换API Key启用状态")
-            .Produces<ApiResponse>(200)
+            .Produces<ApiResponse>()
             .Produces<ApiResponse>(404);
 
         // 验证API Key
@@ -116,23 +115,20 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 获取所有API Keys
+    ///     获取所有API Keys
     /// </summary>
     private static async Task<List<ApiKey>> GetApiKeys(
         [FromServices] IUserContext userContext,
         ApiKeyService apiKeyService)
     {
         var apiKeys = await apiKeyService.GetAllApiKeysAsync(userContext);
-        
-        apiKeys.ForEach(x =>
-        {
-            x.User.ApiKeys = null;
-        });
+
+        apiKeys.ForEach(x => { x.User.ApiKeys = null; });
         return apiKeys;
     }
 
     /// <summary>
-    /// 根据ID获取API Key
+    ///     根据ID获取API Key
     /// </summary>
     private static async Task<Results<Ok<ApiKey>, NotFound<string>>> GetApiKeyById(
         Guid id,
@@ -141,10 +137,7 @@ public static class ApiKeyEndpoints
         try
         {
             var apiKey = await apiKeyService.GetApiKeyByIdAsync(id);
-            if (apiKey == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (apiKey == null) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             return TypedResults.Ok(apiKey);
         }
@@ -155,7 +148,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 创建新的API Key
+    ///     创建新的API Key
     /// </summary>
     private static async Task<Results<Created<ApiKey>, BadRequest<string>, UnauthorizedHttpResult>> CreateApiKey(
         CreateApiKeyRequest request,
@@ -165,10 +158,7 @@ public static class ApiKeyEndpoints
         try
         {
             var userId = userContext.GetCurrentUserId();
-            if (userId == null)
-            {
-                return TypedResults.Unauthorized();
-            }
+            if (userId == null) return TypedResults.Unauthorized();
 
             var apiKey = await apiKeyService.CreateApiKeyAsync(request, userId.Value);
             return TypedResults.Created($"/api/apikeys/{apiKey.Id}", apiKey);
@@ -180,7 +170,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 更新API Key
+    ///     更新API Key
     /// </summary>
     private static async Task<Results<Ok<ApiKey>, NotFound<string>, BadRequest<string>>> UpdateApiKey(
         Guid id,
@@ -190,10 +180,7 @@ public static class ApiKeyEndpoints
         try
         {
             var apiKey = await apiKeyService.UpdateApiKeyAsync(id, request);
-            if (apiKey == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (apiKey == null) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             return TypedResults.Ok(apiKey);
         }
@@ -204,7 +191,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 删除API Key
+    ///     删除API Key
     /// </summary>
     private static async Task<Results<NoContent, NotFound<string>>> DeleteApiKey(
         Guid id,
@@ -213,10 +200,7 @@ public static class ApiKeyEndpoints
         try
         {
             var success = await apiKeyService.DeleteApiKeyAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             return TypedResults.NoContent();
         }
@@ -227,7 +211,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 验证API Key
+    ///     验证API Key
     /// </summary>
     private static async Task<Results<Ok<bool>, BadRequest<string>>> ValidateApiKey(
         ValidateApiKeyRequest request,
@@ -245,7 +229,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 启用API Key
+    ///     启用API Key
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> EnableApiKey(
         Guid id,
@@ -254,10 +238,7 @@ public static class ApiKeyEndpoints
         try
         {
             var success = await apiKeyService.EnableApiKeyAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             return TypedResults.Ok();
         }
@@ -268,7 +249,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 禁用API Key
+    ///     禁用API Key
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> DisableApiKey(
         Guid id,
@@ -277,10 +258,7 @@ public static class ApiKeyEndpoints
         try
         {
             var success = await apiKeyService.DisableApiKeyAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             return TypedResults.Ok();
         }
@@ -291,7 +269,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 切换API Key启用状态
+    ///     切换API Key启用状态
     /// </summary>
     private static async Task<Results<Ok, NotFound<string>>> ToggleApiKeyEnabled(
         Guid id,
@@ -300,10 +278,7 @@ public static class ApiKeyEndpoints
         try
         {
             var success = await apiKeyService.ToggleApiKeyEnabledAsync(id);
-            if (!success)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (!success) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             return TypedResults.Ok();
         }
@@ -314,7 +289,7 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 获取API Key费用使用情况
+    ///     获取API Key费用使用情况
     /// </summary>
     private static async Task<Results<Ok<CostUsageInfo>, NotFound<string>>> GetApiKeyUsage(
         Guid id,
@@ -323,10 +298,7 @@ public static class ApiKeyEndpoints
         try
         {
             var apiKey = await apiKeyService.GetApiKeyByIdAsync(id);
-            if (apiKey == null)
-            {
-                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
-            }
+            if (apiKey == null) return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
 
             var costUsage = apiKey.GetCostUsage();
             return TypedResults.Ok(costUsage);
@@ -338,24 +310,23 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 获取API Key账户绑定管理信息
+    ///     获取API Key账户绑定管理信息
     /// </summary>
-    private static async Task<Results<Ok<ApiResponse<ApiKeyBindingManagementDto>>, NotFound<ApiResponse<object>>>> GetApiKeyAccountBindings(
-        Guid id,
-        ApiKeyService apiKeyService,
-        IUserContext userContext)
+    private static async Task<Results<Ok<ApiResponse<ApiKeyBindingManagementDto>>, NotFound<ApiResponse<object>>>>
+        GetApiKeyAccountBindings(
+            Guid id,
+            ApiKeyService apiKeyService,
+            IUserContext userContext)
     {
         try
         {
             var managementDto = await apiKeyService.GetApiKeyBindingManagementAsync(id);
             if (managementDto == null)
-            {
                 return TypedResults.NotFound(new ApiResponse<object>
                 {
                     Success = false,
                     Message = $"未找到ID为 {id} 的API Key"
                 });
-            }
 
             return TypedResults.Ok(new ApiResponse<ApiKeyBindingManagementDto>
             {
@@ -375,24 +346,24 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 设置API Key默认账户
+    ///     设置API Key默认账户
     /// </summary>
-    private static async Task<Results<Ok<ApiResponse<object>>, NotFound<ApiResponse<object>>, BadRequest<ApiResponse<object>>>> SetApiKeyDefaultAccount(
-        Guid id,
-        SetDefaultAccountRequest request,
-        ApiKeyService apiKeyService)
+    private static async
+        Task<Results<Ok<ApiResponse<object>>, NotFound<ApiResponse<object>>, BadRequest<ApiResponse<object>>>>
+        SetApiKeyDefaultAccount(
+            Guid id,
+            SetDefaultAccountRequest request,
+            ApiKeyService apiKeyService)
     {
         try
         {
             var success = await apiKeyService.SetDefaultAccountAsync(id, request.AccountId);
             if (!success)
-            {
                 return TypedResults.NotFound(new ApiResponse<object>
                 {
                     Success = false,
                     Message = $"未找到ID为 {id} 的API Key"
                 });
-            }
 
             return TypedResults.Ok(new ApiResponse<object>
             {
@@ -419,24 +390,25 @@ public static class ApiKeyEndpoints
     }
 
     /// <summary>
-    /// 批量更新API Key账户绑定
+    ///     批量更新API Key账户绑定
     /// </summary>
-    private static async Task<Results<Ok<ApiResponse<object>>, NotFound<ApiResponse<object>>, BadRequest<ApiResponse<object>>>> UpdateApiKeyAccountBindings(
-        Guid id,
-        UpdateApiKeyAccountBindingsRequest request,
-        ApiKeyService apiKeyService)
+    private static async
+        Task<Results<Ok<ApiResponse<object>>, NotFound<ApiResponse<object>>, BadRequest<ApiResponse<object>>>>
+        UpdateApiKeyAccountBindings(
+            Guid id,
+            UpdateApiKeyAccountBindingsRequest request,
+            ApiKeyService apiKeyService)
     {
         try
         {
-            var success = await apiKeyService.UpdateAccountBindingsAsync(id, request.DefaultAccountId, request.AccountBindings);
+            var success =
+                await apiKeyService.UpdateAccountBindingsAsync(id, request.DefaultAccountId, request.AccountBindings);
             if (!success)
-            {
                 return TypedResults.NotFound(new ApiResponse<object>
                 {
                     Success = false,
                     Message = $"未找到ID为 {id} 的API Key"
                 });
-            }
 
             return TypedResults.Ok(new ApiResponse<object>
             {

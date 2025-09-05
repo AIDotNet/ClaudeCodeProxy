@@ -1,54 +1,12 @@
-using System.Text.Json.Serialization;
-
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 模型价格信息
+///     模型价格信息
 /// </summary>
 public class ModelPricing
 {
     /// <summary>
-    /// 模型名称
-    /// </summary>
-    public string Model { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 输入token单价
-    /// </summary>
-    public decimal InputPrice { get; set; }
-
-    /// <summary>
-    /// 输出token单价
-    /// </summary>
-    public decimal OutputPrice { get; set; }
-
-    /// <summary>
-    /// 缓存写入单价
-    /// </summary>
-    public decimal CacheWritePrice { get; set; }
-
-    /// <summary>
-    /// 缓存读取单价
-    /// </summary>
-    public decimal CacheReadPrice { get; set; }
-
-    /// <summary>
-    /// 货币类型
-    /// </summary>
-    public string Currency { get; set; } = "USD";
-
-    /// <summary>
-    /// 价格描述
-    /// </summary>
-    public string? Description { get; set; }
-
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    public bool IsEnabled { get; set; } = true;
-
-    /// <summary>
-    /// 获取所有模型的定价数据
+    ///     获取所有模型的定价数据
     /// </summary>
     public static readonly List<ModelPricing> AllModels = new()
     {
@@ -98,7 +56,7 @@ public class ModelPricing
             InputPrice = 0.000015m,
             OutputPrice = 0.000075m,
             CacheWritePrice = 0.00001875m,
-            CacheReadPrice =  0.0000015m,
+            CacheReadPrice = 0.0000015m,
             Currency = "USD",
             Description = "Claude Opus 4 - $0.000015/输入, $0.000075/输出"
         },
@@ -108,7 +66,7 @@ public class ModelPricing
             InputPrice = 0.000003m,
             OutputPrice = 0.000015m,
             CacheWritePrice = 0.00001875m,
-            CacheReadPrice =  0.0000015m,
+            CacheReadPrice = 0.0000015m,
             Currency = "USD",
             Description = "Claude Opus 4.1 - $0.000003/输入, $0.000015/输出"
         },
@@ -152,7 +110,47 @@ public class ModelPricing
     };
 
     /// <summary>
-    /// 根据模型名称获取定价信息
+    ///     模型名称
+    /// </summary>
+    public string Model { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     输入token单价
+    /// </summary>
+    public decimal InputPrice { get; set; }
+
+    /// <summary>
+    ///     输出token单价
+    /// </summary>
+    public decimal OutputPrice { get; set; }
+
+    /// <summary>
+    ///     缓存写入单价
+    /// </summary>
+    public decimal CacheWritePrice { get; set; }
+
+    /// <summary>
+    ///     缓存读取单价
+    /// </summary>
+    public decimal CacheReadPrice { get; set; }
+
+    /// <summary>
+    ///     货币类型
+    /// </summary>
+    public string Currency { get; set; } = "USD";
+
+    /// <summary>
+    ///     价格描述
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    ///     是否启用
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    ///     根据模型名称获取定价信息
     /// </summary>
     /// <param name="model">模型名称</param>
     /// <returns>模型定价信息，如果未找到则返回默认的Sonnet定价</returns>
@@ -161,68 +159,65 @@ public class ModelPricing
         var pricing = AllModels.FirstOrDefault(m => m.Model == model);
 
         // 如果没找到，返回默认的Sonnet定价
-        if (pricing == null)
-        {
-            pricing = AllModels.First(m => m.Model == "claude-3-5-sonnet-20241022");
-        }
+        if (pricing == null) pricing = AllModels.First(m => m.Model == "claude-3-5-sonnet-20241022");
 
         return pricing;
     }
 }
 
 /// <summary>
-/// 汇率配置
+///     汇率配置
 /// </summary>
 public class ExchangeRate
 {
     /// <summary>
-    /// 源货币
+    ///     源货币
     /// </summary>
     public string FromCurrency { get; set; } = string.Empty;
 
     /// <summary>
-    /// 目标货币
+    ///     目标货币
     /// </summary>
     public string ToCurrency { get; set; } = string.Empty;
 
     /// <summary>
-    /// 汇率
+    ///     汇率
     /// </summary>
     public decimal Rate { get; set; }
 
     /// <summary>
-    /// 汇率更新时间
+    ///     汇率更新时间
     /// </summary>
     public DateTime UpdatedAt { get; set; }
 }
 
 /// <summary>
-/// 价格计算结果
+///     价格计算结果
 /// </summary>
 public class PricingResult
 {
     /// <summary>
-    /// 总token数
+    ///     总token数
     /// </summary>
     public decimal WeightedTokens { get; set; }
 
     /// <summary>
-    /// 平均单价
+    ///     平均单价
     /// </summary>
     public decimal UnitPrice { get; set; }
 
     /// <summary>
-    /// 总费用
+    ///     总费用
     /// </summary>
     public decimal TotalCost { get; set; }
 
     /// <summary>
-    /// 货币类型
+    ///     货币类型
     /// </summary>
     public string Currency { get; set; } = "USD";
 
     /// <summary>
-    /// 使用的模型
+    ///     使用的模型
     /// </summary>
     public string Model { get; set; } = string.Empty;
 }

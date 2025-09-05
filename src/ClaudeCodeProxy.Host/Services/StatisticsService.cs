@@ -1,20 +1,20 @@
+using System.Globalization;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace ClaudeCodeProxy.Host.Services;
 
 /// <summary>
-/// 统计服务类
-/// 处理请求日志记录、实时指标计算和统计数据查询
+///     统计服务类
+///     处理请求日志记录、实时指标计算和统计数据查询
 /// </summary>
 public class StatisticsService
 {
+    private static readonly DateTime _systemStartTime = DateTime.Now;
     private readonly IContext _context;
     private readonly ILogger<StatisticsService> _logger;
-    private static readonly DateTime _systemStartTime = DateTime.Now;
 
     public StatisticsService(IContext context, ILogger<StatisticsService> logger)
     {
@@ -23,7 +23,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 记录请求日志
+    ///     记录请求日志
     /// </summary>
     public async Task<RequestLog> LogRequestAsync(
         Guid apiKeyId,
@@ -64,7 +64,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 完成请求日志记录
+    ///     完成请求日志记录
     /// </summary>
     public async Task CompleteRequestLogAsync(
         Guid requestLogId,
@@ -104,7 +104,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 更新 API Key 统计信息
+    ///     更新 API Key 统计信息
     /// </summary>
     public async Task UpdateApiKeyStatisticsAsync(
         Guid apiKeyId,
@@ -126,19 +126,13 @@ public class StatisticsService
 
         // 检查是否需要重置每日使用量
         var lastUsedDate = apiKey.LastUsedAt?.Date;
-        if (lastUsedDate.HasValue && lastUsedDate.Value < today)
-        {
-            apiKey.DailyCostUsed = 0;
-        }
+        if (lastUsedDate.HasValue && lastUsedDate.Value < today) apiKey.DailyCostUsed = 0;
 
         // 检查是否需要重置月度使用量
         var lastUsedMonth = apiKey.LastUsedAt.HasValue
             ? new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1)
             : DateTime.MinValue;
-        if (lastUsedMonth < currentMonth)
-        {
-            apiKey.MonthlyCostUsed = 0;
-        }
+        if (lastUsedMonth < currentMonth) apiKey.MonthlyCostUsed = 0;
 
         // 增加使用次数
         apiKey.TotalUsageCount++;
@@ -155,7 +149,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取Dashboard统计数据
+    ///     获取Dashboard统计数据
     /// </summary>
     public async Task<DashboardResponse> GetDashboardDataAsync(
         bool admin,
@@ -173,9 +167,9 @@ public class StatisticsService
             .Where(x => x.UserId == currentUserId)
             .CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.Now), cancellationToken);
 
-        int totalAccounts = 0;
-        int activeAccounts = 0;
-        int rateLimitedAccounts = 0;
+        var totalAccounts = 0;
+        var activeAccounts = 0;
+        var rateLimitedAccounts = 0;
         if (admin)
         {
             totalAccounts = await _context.Accounts
@@ -223,7 +217,7 @@ public class StatisticsService
             .SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
 
         // 计算实时RPM和TPM
-        var (rpm, tpm, isHistorical) = await CalculateRealtimeMetricsAsync(currentUserId,5, cancellationToken);
+        var (rpm, tpm, isHistorical) = await CalculateRealtimeMetricsAsync(currentUserId, 5, cancellationToken);
 
         return new DashboardResponse
         {
@@ -252,7 +246,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取费用数据
+    ///     获取费用数据
     /// </summary>
     public async Task<CostDataResponse> GetCostDataAsync(Guid currentUserId,
         CancellationToken cancellationToken = default)
@@ -260,12 +254,12 @@ public class StatisticsService
         var today = DateTime.Now.Date;
 
         var todayCost = await _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId)
+            .Where(x => x.UserId == currentUserId)
             .Where(x => x.RequestDate == today)
             .SumAsync(x => x.Cost, cancellationToken);
 
         var totalCost = await _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId)
+            .Where(x => x.UserId == currentUserId)
             .SumAsync(x => x.Cost, cancellationToken);
 
         return new CostDataResponse
@@ -290,7 +284,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取模型统计数据
+    ///     获取模型统计数据
     /// </summary>
     public async Task<List<ModelStatistics>> GetModelStatisticsAsync(
         DateTime? startDate = null,
@@ -319,18 +313,16 @@ public class StatisticsService
 
         // 添加格式化费用信息
         foreach (var stat in modelStats)
-        {
             stat.Formatted = new FormattedModelCost
             {
                 Total = FormatCost(stat.Cost)
             };
-        }
 
         return modelStats;
     }
 
     /// <summary>
-    /// 获取趋势数据
+    ///     获取趋势数据
     /// </summary>
     public async Task<List<TrendDataPoint>> GetTrendDataAsync(
         TrendGranularity granularity,
@@ -345,17 +337,13 @@ public class StatisticsService
         endDate ??= defaultEndDate;
 
         if (granularity == TrendGranularity.Hour)
-        {
             return await GetHourlyTrendDataAsync(startDate.Value, endDate.Value, cancellationToken);
-        }
-        else
-        {
-            return await GetDailyTrendDataAsync(startDate.Value, endDate.Value, cancellationToken);
-        }
+
+        return await GetDailyTrendDataAsync(startDate.Value, endDate.Value, cancellationToken);
     }
 
     /// <summary>
-    /// 获取API Keys趋势数据
+    ///     获取API Keys趋势数据
     /// </summary>
     public async Task<ApiKeysTrendResponse> GetApiKeysTrendAsync(
         ApiKeysTrendMetric metric,
@@ -376,10 +364,10 @@ public class StatisticsService
             .GroupBy(x => new { x.ApiKeyId, x.ApiKeyName })
             .Select(g => new
             {
-                ApiKeyId = g.Key.ApiKeyId,
-                ApiKeyName = g.Key.ApiKeyName,
+                g.Key.ApiKeyId,
+                g.Key.ApiKeyName,
                 TotalTokens = g.Sum(x => (long)x.TotalTokens),
-                TotalCost = g.Sum(x => (decimal)x.Cost)
+                TotalCost = g.Sum(x => x.Cost)
             })
             .OrderByDescending(x => x.TotalTokens)
             .Take(10)
@@ -399,15 +387,11 @@ public class StatisticsService
         var trendData = new List<ApiKeyTrendDataPoint>();
 
         if (granularity == TrendGranularity.Hour)
-        {
             trendData = await GetApiKeysHourlyTrendDataAsync(topApiKeyIds, metric, startDate.Value, endDate.Value,
                 cancellationToken);
-        }
         else
-        {
             trendData = await GetApiKeysDailyTrendDataAsync(topApiKeyIds, metric, startDate.Value, endDate.Value,
                 cancellationToken);
-        }
 
         return new ApiKeysTrendResponse
         {
@@ -418,7 +402,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 计算实时RPM和TPM
+    ///     计算实时RPM和TPM
     /// </summary>
     private async Task<(double rpm, double tpm, bool isHistorical)> CalculateRealtimeMetricsAsync(Guid currentUserId,
         int windowMinutes,
@@ -428,7 +412,7 @@ public class StatisticsService
         var windowEnd = DateTime.Now;
 
         var recentRequests = await _context.RequestLogs
-            .Where(x=>x.UserId == currentUserId)
+            .Where(x => x.UserId == currentUserId)
             .Where(x => x.RequestStartTime >= windowStart && x.RequestStartTime <= windowEnd)
             .ToListAsync(cancellationToken);
 
@@ -436,7 +420,7 @@ public class StatisticsService
         {
             // 如果没有最近的请求，查看是否有历史数据
             var hasHistoricalData = await _context.RequestLogs
-                .Where(x=>x.UserId == currentUserId).AnyAsync(cancellationToken);
+                .Where(x => x.UserId == currentUserId).AnyAsync(cancellationToken);
             return (0, 0, hasHistoricalData);
         }
 
@@ -453,7 +437,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取日趋势数据
+    ///     获取日趋势数据
     /// </summary>
     private async Task<List<TrendDataPoint>> GetDailyTrendDataAsync(
         DateTime startDate,
@@ -492,7 +476,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取小时趋势数据
+    ///     获取小时趋势数据
     /// </summary>
     private async Task<List<TrendDataPoint>> GetHourlyTrendDataAsync(
         DateTime startDate,
@@ -505,8 +489,8 @@ public class StatisticsService
             .GroupBy(x => new { x.RequestDate, x.RequestHour })
             .Select(g => new
             {
-                RequestDate = g.Key.RequestDate,
-                RequestHour = g.Key.RequestHour,
+                g.Key.RequestDate,
+                g.Key.RequestHour,
                 InputTokens = g.Sum(x => (long)x.InputTokens),
                 OutputTokens = g.Sum(x => (long)x.OutputTokens),
                 CacheCreateTokens = g.Sum(x => (long)x.CacheCreateTokens),
@@ -532,7 +516,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取API Keys日趋势数据
+    ///     获取API Keys日趋势数据
     /// </summary>
     private async Task<List<ApiKeyTrendDataPoint>> GetApiKeysDailyTrendDataAsync(
         List<string> topApiKeyIds,
@@ -549,8 +533,8 @@ public class StatisticsService
             .Select(g => new
             {
                 Date = g.Key.RequestDate,
-                ApiKeyId = g.Key.ApiKeyId,
-                ApiKeyName = g.Key.ApiKeyName,
+                g.Key.ApiKeyId,
+                g.Key.ApiKeyName,
                 Requests = g.LongCount(),
                 Tokens = g.Sum(x => (long)x.TotalTokens),
                 Cost = g.Sum(x => x.Cost)
@@ -582,7 +566,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取API Keys小时趋势数据
+    ///     获取API Keys小时趋势数据
     /// </summary>
     private async Task<List<ApiKeyTrendDataPoint>> GetApiKeysHourlyTrendDataAsync(
         List<string> topApiKeyIds,
@@ -600,8 +584,8 @@ public class StatisticsService
             .Select(g => new
             {
                 DateTime = g.Key.RequestDate.AddHours(g.Key.RequestHour),
-                ApiKeyId = g.Key.ApiKeyId,
-                ApiKeyName = g.Key.ApiKeyName,
+                g.Key.ApiKeyId,
+                g.Key.ApiKeyName,
                 Requests = g.LongCount(),
                 Tokens = g.Sum(x => (long)x.TotalTokens),
                 Cost = g.Sum(x => x.Cost)
@@ -633,7 +617,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 格式化费用显示
+    ///     格式化费用显示
     /// </summary>
     private static string FormatCost(decimal cost)
     {
@@ -643,7 +627,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 解析日期过滤器
+    ///     解析日期过滤器
     /// </summary>
     public static (DateTime startDate, DateTime endDate) ParseDateFilter(DateFilterRequest filter)
     {
@@ -651,9 +635,7 @@ public class StatisticsService
         var today = now.Date;
 
         if (filter.Type == "custom" && filter.StartTime.HasValue && filter.EndTime.HasValue)
-        {
             return (filter.StartTime.Value, filter.EndTime.Value);
-        }
 
         return filter.Preset switch
         {
@@ -666,7 +648,7 @@ public class StatisticsService
     }
 
     /// <summary>
-    /// 获取API Key到模型的成本流向数据
+    ///     获取API Key到模型的成本流向数据
     /// </summary>
     public async Task<List<ApiKeyModelFlowData>> GetApiKeyModelFlowDataAsync(Guid currentUserId,
         DateTime? startDate = null,

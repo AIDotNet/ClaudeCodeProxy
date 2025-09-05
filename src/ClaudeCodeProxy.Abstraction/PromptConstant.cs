@@ -2,10 +2,10 @@
 
 public static class PromptConstant
 {
-    public  const string ClaudeCliSystemPrompt = @"You are Claude Code, Anthropic's official CLI for Claude.";
-    
+    public const string ClaudeCliSystemPrompt = @"You are Claude Code, Anthropic's official CLI for Claude.";
+
     /// <summary>
-    /// Claude Code系统提示词
+    ///     Claude Code系统提示词
     /// </summary>
     public const string ClaudeCodeSystemPrompt = @"
 You are an interactive CLI tool that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.
@@ -191,6 +191,4 @@ user: Where are errors from the client handled?
 assistant: Clients are marked as failed in the `connectToServer` function in src/services/process.ts:712.
 </example>
 ";
-
-    
 }

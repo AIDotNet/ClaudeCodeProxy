@@ -27,7 +27,7 @@ public class ClaudeProxyService(IMemoryCache memory, OAuthHelper oAuthHelper)
 
         memory.Set(sessionId, cacheEntry, TimeSpan.FromMinutes(10));
 
-        return new GenerateAuthUrlResult()
+        return new GenerateAuthUrlResult
         {
             Instructions =
             [
@@ -47,15 +47,11 @@ public class ClaudeProxyService(IMemoryCache memory, OAuthHelper oAuthHelper)
         // 验证必需参数
         if (string.IsNullOrEmpty(input.SessionId) ||
             (string.IsNullOrEmpty(input.AuthorizationCode) && string.IsNullOrEmpty(input.CallbackUrl)))
-        {
             throw new ArgumentException("Session ID and authorization code (or callback URL) are required");
-        }
 
         // 从内存缓存获取OAuth会话信息
         if (!memory.TryGetValue(input.SessionId, out OAuthSessionData? oauthSession) || oauthSession == null)
-        {
             throw new InvalidOperationException("Invalid or expired OAuth session");
-        }
 
         // 检查会话是否过期
         if (DateTime.Now > oauthSession.ExpiresAt)
@@ -79,10 +75,7 @@ public class ClaudeProxyService(IMemoryCache memory, OAuthHelper oAuthHelper)
 
         // 转换ProxyAuth到ProxyConfig
         ProxyConfig? proxyConfig = null;
-        if (!string.IsNullOrEmpty(oauthSession.Proxy?.Host))
-        {
-            proxyConfig = oauthSession.Proxy;
-        }
+        if (!string.IsNullOrEmpty(oauthSession.Proxy?.Host)) proxyConfig = oauthSession.Proxy;
 
         // 交换访问令牌
         var tokenData = await oAuthHelper.ExchangeCodeForTokensAsync(

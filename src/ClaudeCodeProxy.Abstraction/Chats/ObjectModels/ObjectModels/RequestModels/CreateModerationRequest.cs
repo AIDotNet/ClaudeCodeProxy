@@ -25,14 +25,10 @@ public record CreateModerationRequest : IOpenAiModels.IModel
         get
         {
             if (Input != null && InputAsList != null)
-            {
-                throw new ValidationException("Input and InputAsList can not be assigned at the same time. One of them is should be null.");
-            }
+                throw new ValidationException(
+                    "Input and InputAsList can not be assigned at the same time. One of them is should be null.");
 
-            if (Input != null)
-            {
-                return new List<string> {Input};
-            }
+            if (Input != null) return new List<string> { Input };
 
             return InputAsList;
         }

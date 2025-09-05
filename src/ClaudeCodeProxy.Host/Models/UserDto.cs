@@ -1,7 +1,7 @@
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 用户数据传输对象
+///     用户数据传输对象
 /// </summary>
 public class UserDto
 {
@@ -18,15 +18,15 @@ public class UserDto
     public string? ProviderId { get; set; }
     public int RoleId { get; set; }
     public string RoleName { get; set; } = string.Empty;
-    
+
     public RoleDto? Role { get; set; }
-    
+
     public DateTime CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
 }
 
 /// <summary>
-/// 创建用户请求
+///     创建用户请求
 /// </summary>
 public class CreateUserRequest
 {
@@ -39,7 +39,7 @@ public class CreateUserRequest
 }
 
 /// <summary>
-/// 用户注册请求
+///     用户注册请求
 /// </summary>
 public class RegisterUserRequest
 {
@@ -52,7 +52,7 @@ public class RegisterUserRequest
 }
 
 /// <summary>
-/// 更新用户请求
+///     更新用户请求
 /// </summary>
 public class UpdateUserRequest
 {
@@ -62,15 +62,15 @@ public class UpdateUserRequest
     public bool IsActive { get; set; }
     public bool EmailConfirmed { get; set; }
     public int RoleId { get; set; }
-    
+
     /// <summary>
-    /// 账户绑定信息（可选）
+    ///     账户绑定信息（可选）
     /// </summary>
     public List<UserAccountBindingRequest>? AccountBindings { get; set; }
 }
 
 /// <summary>
-/// 修改密码请求
+///     修改密码请求
 /// </summary>
 public class ChangePasswordRequest
 {
@@ -79,7 +79,7 @@ public class ChangePasswordRequest
 }
 
 /// <summary>
-/// 重置密码请求
+///     重置密码请求
 /// </summary>
 public class ResetPasswordRequest
 {
@@ -87,7 +87,7 @@ public class ResetPasswordRequest
 }
 
 /// <summary>
-/// 用户登录历史DTO
+///     用户登录历史DTO
 /// </summary>
 public class UserLoginHistoryDto
 {

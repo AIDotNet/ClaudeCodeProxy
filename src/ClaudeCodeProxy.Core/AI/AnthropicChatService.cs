@@ -3,18 +3,18 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ClaudeCodeProxy.Abstraction;
+using ClaudeCodeProxy.Abstraction.Anthropic;
 using ClaudeCodeProxy.Abstraction.Chats;
 using ClaudeCodeProxy.Core.Extensions;
 using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
 using Thor.Abstractions;
-using Thor.Abstractions.Anthropic;
 
 namespace ClaudeCodeProxy.Core.AI;
 
 public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthropicChatCompletionsService
 {
-    public async Task<ClaudeChatCompletionDto> ChatCompletionsAsync(AnthropicInput input,
+    public async Task<AnthropicChatCompletionDto> ChatCompletionsAsync(AnthropicInput input,
         Dictionary<string, string> headers,
         ProxyConfig? config,
         ThorPlatformOptions? options = null,
@@ -23,18 +23,11 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         using var openai =
             Activity.Current?.Source.StartActivity("Claudia 对话补全");
 
-        if (string.IsNullOrEmpty(options.Address))
-        {
-            options.Address = "https://api.anthropic.com/";
-        }
+        if (string.IsNullOrEmpty(options.Address)) options.Address = "https://api.anthropic.com/";
 
         if (input.Thinking is not null && input.Thinking.BudgetTokens > 0 && input.MaxTokens != null)
-        {
             if (input.Thinking.BudgetTokens > input.MaxTokens)
-            {
                 input.Thinking.BudgetTokens = input.MaxTokens.Value - 1;
-            }
-        }
 
         var client = HttpClientFactory.GetHttpClient(options.Address, config);
 
@@ -47,6 +40,9 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
 
         openai?.SetTag("Model", input.Model);
         openai?.SetTag("Response", response.StatusCode.ToString());
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("Claude API Key 未授权，请检查Key是否正确");
 
         // 大于等于400的状态码都认为是异常
         if (response.StatusCode >= HttpStatusCode.BadRequest)
@@ -77,13 +73,13 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         }
 
         var value =
-            await response.Content.ReadFromJsonAsync<ClaudeChatCompletionDto>(ThorJsonSerializer.DefaultOptions,
-                cancellationToken: cancellationToken);
+            await response.Content.ReadFromJsonAsync<AnthropicChatCompletionDto>(ThorJsonSerializer.DefaultOptions,
+                cancellationToken);
 
         return value;
     }
 
-    public async IAsyncEnumerable<(string, string, ClaudeStreamDto?)> StreamChatCompletionsAsync(AnthropicInput input,
+    public async IAsyncEnumerable<(string, AnthropicStreamDto?)> StreamChatCompletionsAsync(AnthropicInput input,
         Dictionary<string, string> headers,
         ProxyConfig? config,
         ThorPlatformOptions? options = null,
@@ -92,19 +88,12 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         using var openai =
             Activity.Current?.Source.StartActivity("Claudia 对话补全");
 
-        if (string.IsNullOrEmpty(options.Address))
-        {
-            options.Address = "https://api.anthropic.com/";
-        }
+        if (string.IsNullOrEmpty(options.Address)) options.Address = "https://api.anthropic.com/";
 
         if (input.Thinking is not null && input.Thinking.BudgetTokens > 0 && input.MaxTokens != null)
-        {
             if (input.Thinking.BudgetTokens > input.MaxTokens)
-            {
                 input.Thinking.BudgetTokens = input.MaxTokens.Value - 1;
-            }
-        }
-        
+
         var client = HttpClientFactory.GetHttpClient(options.Address, config);
 
         var url = new Uri(options.Address);
@@ -116,6 +105,9 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
 
         openai?.SetTag("Model", input.Model);
         openai?.SetTag("Response", response.StatusCode.ToString());
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("Claude API Key 未授权，请检查Key是否正确");
 
         // 大于等于400的状态码都认为是异常
         if (response.StatusCode >= HttpStatusCode.BadRequest)
@@ -131,10 +123,10 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         using var stream = new StreamReader(await response.Content.ReadAsStreamAsync(cancellationToken));
 
         using StreamReader reader = new(await response.Content.ReadAsStreamAsync(cancellationToken));
-        string? line = string.Empty;
+        var line = string.Empty;
         string? data = null;
 
-        string eventType = string.Empty;
+        var eventType = string.Empty;
 
         while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
         {
@@ -148,10 +140,7 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
                 throw new Exception("OpenAI对话异常" + line);
             }
 
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
+            if (string.IsNullOrWhiteSpace(line)) continue;
 
             if (line.StartsWith("event:"))
             {
@@ -163,10 +152,10 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
 
             data = line[OpenAIConstant.Data.Length..].Trim();
 
-            var result = JsonSerializer.Deserialize<ClaudeStreamDto>(data,
+            var result = JsonSerializer.Deserialize<AnthropicStreamDto>(data,
                 ThorJsonSerializer.DefaultOptions);
 
-            yield return (eventType, line, result);
+            yield return (eventType, result);
         }
     }
 }

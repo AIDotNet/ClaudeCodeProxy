@@ -8,7 +8,7 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.PostgreSQL;
 public static class ServiceExtensions
 {
     /// <summary>
-    /// Adds Entity Framework Core with SQLite support to the service collection.
+    ///     Adds Entity Framework Core with SQLite support to the service collection.
     /// </summary>
     /// <param name="services"></param>
     /// <param name="configuration"></param>

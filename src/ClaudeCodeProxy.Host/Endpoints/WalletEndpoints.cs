@@ -1,14 +1,12 @@
+using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 钱包相关API端点
+///     钱包相关API端点
 /// </summary>
 public static class WalletEndpoints
 {
@@ -73,17 +71,14 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 获取当前用户钱包信息
+    ///     获取当前用户钱包信息
     /// </summary>
     private static async Task<IResult> GetUserWallet(
         IUserContext userContext,
         WalletService walletService)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
@@ -97,7 +92,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 获取用户钱包交易记录
+    ///     获取用户钱包交易记录
     /// </summary>
     private static async Task<IResult> GetWalletTransactions(
         IUserContext userContext,
@@ -107,14 +102,12 @@ public static class WalletEndpoints
         string? transactionType = null)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
-            var transactions = await walletService.GetWalletTransactionsAsync(userId.Value, pageIndex, pageSize, transactionType);
+            var transactions =
+                await walletService.GetWalletTransactionsAsync(userId.Value, pageIndex, pageSize, transactionType);
             return Results.Ok(transactions);
         }
         catch (Exception ex)
@@ -124,7 +117,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 获取钱包统计信息
+    ///     获取钱包统计信息
     /// </summary>
     private static async Task<IResult> GetWalletStatistics(
         IUserContext userContext,
@@ -132,10 +125,7 @@ public static class WalletEndpoints
         int days = 30)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
@@ -149,7 +139,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 充值钱包（当前用户）
+    ///     充值钱包（当前用户）
     /// </summary>
     private static async Task<IResult> RechargeWallet(
         IUserContext userContext,
@@ -157,28 +147,20 @@ public static class WalletEndpoints
         [FromBody] WalletRechargeRequest request)
     {
         var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return Results.Unauthorized();
-        }
+        if (userId == null) return Results.Unauthorized();
 
         try
         {
             var success = await walletService.RechargeWalletAsync(
-                userId.Value, 
-                request.Amount, 
-                request.Description, 
-                request.PaymentMethod, 
+                userId.Value,
+                request.Amount,
+                request.Description,
+                request.PaymentMethod,
                 request.ExternalTransactionId);
 
-            if (success)
-            {
-                return Results.Ok(new { success = true, message = "充值成功" });
-            }
-            else
-            {
-                return Results.BadRequest(new { success = false, message = "充值失败" });
-            }
+            if (success) return Results.Ok(new { success = true, message = "充值成功" });
+
+            return Results.BadRequest(new { success = false, message = "充值失败" });
         }
         catch (Exception ex)
         {
@@ -187,7 +169,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 管理员获取指定用户钱包信息
+    ///     管理员获取指定用户钱包信息
     /// </summary>
     private static async Task<IResult> GetUserWalletByAdmin(
         Guid userId,
@@ -205,7 +187,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 管理员为指定用户充值
+    ///     管理员为指定用户充值
     /// </summary>
     private static async Task<IResult> RechargeUserWalletByAdmin(
         Guid userId,
@@ -215,20 +197,15 @@ public static class WalletEndpoints
         try
         {
             var success = await walletService.RechargeWalletAsync(
-                userId, 
-                request.Amount, 
-                request.Description, 
-                request.PaymentMethod, 
+                userId,
+                request.Amount,
+                request.Description,
+                request.PaymentMethod,
                 request.ExternalTransactionId);
 
-            if (success)
-            {
-                return Results.Ok(new { success = true, message = "充值成功" });
-            }
-            else
-            {
-                return Results.BadRequest(new { success = false, message = "充值失败" });
-            }
+            if (success) return Results.Ok(new { success = true, message = "充值成功" });
+
+            return Results.BadRequest(new { success = false, message = "充值失败" });
         }
         catch (Exception ex)
         {
@@ -237,7 +214,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 更新钱包状态
+    ///     更新钱包状态
     /// </summary>
     private static async Task<IResult> UpdateWalletStatus(
         Guid userId,
@@ -247,15 +224,10 @@ public static class WalletEndpoints
         try
         {
             var success = await walletService.UpdateWalletStatusAsync(userId, request.Status);
-            
-            if (success)
-            {
-                return Results.Ok(new { success = true, message = "状态更新成功" });
-            }
-            else
-            {
-                return Results.NotFound(new { success = false, message = "用户钱包不存在" });
-            }
+
+            if (success) return Results.Ok(new { success = true, message = "状态更新成功" });
+
+            return Results.NotFound(new { success = false, message = "用户钱包不存在" });
         }
         catch (Exception ex)
         {
@@ -264,7 +236,7 @@ public static class WalletEndpoints
     }
 
     /// <summary>
-    /// 管理员获取指定用户钱包交易记录
+    ///     管理员获取指定用户钱包交易记录
     /// </summary>
     private static async Task<IResult> GetUserWalletTransactionsByAdmin(
         Guid userId,
@@ -275,7 +247,8 @@ public static class WalletEndpoints
     {
         try
         {
-            var transactions = await walletService.GetWalletTransactionsAsync(userId, pageIndex, pageSize, transactionType);
+            var transactions =
+                await walletService.GetWalletTransactionsAsync(userId, pageIndex, pageSize, transactionType);
             return Results.Ok(transactions);
         }
         catch (Exception ex)

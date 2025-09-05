@@ -1,16 +1,16 @@
 <Project>
-  <!-- See https://aka.ms/dotnet/msbuild/customize for more details on customizing your build -->
-  <PropertyGroup>
-    <!-- 统一版本号管理 -->
-    <Version>0.1.7</Version>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
-    <FileVersion>$(Version)</FileVersion>
-    <InformationalVersion>$(Version)</InformationalVersion>
-    
-    <!-- 产品信息 -->
-    <Product>ClaudeCodeProxy</Product>
-    <Company>AIDotNet</Company>
-    <Copyright>Copyright © AIDotNet 2025</Copyright>
-    <Description>Claude API代理服务，提供API密钥管理、请求监控和费用统计功能</Description>
-  </PropertyGroup>
+    <!-- See https://aka.ms/dotnet/msbuild/customize for more details on customizing your build -->
+    <PropertyGroup>
+        <!-- 统一版本号管理 -->
+        <Version>0.1.7</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+        <FileVersion>$(Version)</FileVersion>
+        <InformationalVersion>$(Version)</InformationalVersion>
+
+        <!-- 产品信息 -->
+        <Product>ClaudeCodeProxy</Product>
+        <Company>AIDotNet</Company>
+        <Copyright>Copyright © AIDotNet 2025</Copyright>
+        <Description>Claude API代理服务，提供API密钥管理、请求监控和费用统计功能</Description>
+    </PropertyGroup>
 </Project>

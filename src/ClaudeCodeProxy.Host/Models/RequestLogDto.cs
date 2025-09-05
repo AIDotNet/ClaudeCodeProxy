@@ -1,7 +1,7 @@
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 请求日志DTO
+///     请求日志DTO
 /// </summary>
 public class RequestLogDto
 {
@@ -35,7 +35,7 @@ public class RequestLogDto
 }
 
 /// <summary>
-/// 用户请求统计DTO
+///     用户请求统计DTO
 /// </summary>
 public class UserRequestStatisticsDto
 {
@@ -54,7 +54,7 @@ public class UserRequestStatisticsDto
 }
 
 /// <summary>
-/// 模型使用情况DTO
+///     模型使用情况DTO
 /// </summary>
 public class ModelUsageDto
 {
@@ -65,7 +65,7 @@ public class ModelUsageDto
 }
 
 /// <summary>
-/// 每日使用情况DTO
+///     每日使用情况DTO
 /// </summary>
 public class DailyUsageDto
 {

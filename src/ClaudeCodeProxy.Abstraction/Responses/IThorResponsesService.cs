@@ -6,7 +6,7 @@ namespace Thor.Abstractions.Responses;
 public interface IThorResponsesService
 {
     /// <summary>
-    /// 同步获取响应
+    ///     同步获取响应
     /// </summary>
     /// <param name="input"></param>
     /// <param name="options"></param>
@@ -19,7 +19,6 @@ public interface IThorResponsesService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 
     /// </summary>
     /// <param name="input"></param>
     /// <param name="headers"></param>

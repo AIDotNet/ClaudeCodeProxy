@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace ClaudeCodeProxy.Host.Endpoints;
 
 /// <summary>
-/// 认证相关端点
+///     认证相关端点
 /// </summary>
 public static class AuthEndpoints
 {
     /// <summary>
-    /// 配置认证相关端点
+    ///     配置认证相关端点
     /// </summary>
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
@@ -34,7 +34,7 @@ public static class AuthEndpoints
     }
 
     /// <summary>
-    /// 用户登录
+    ///     用户登录
     /// </summary>
     private static async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, BadRequest<string>>> Login(
         LoginRequest request,
@@ -42,24 +42,19 @@ public static class AuthEndpoints
         HttpContext context)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
-        {
             return TypedResults.BadRequest("用户名和密码不能为空");
-        }
 
         var ipAddress = context.Connection.RemoteIpAddress?.ToString();
         var userAgent = context.Request.Headers.UserAgent.ToString();
 
         var loginResponse = await authService.LoginAsync(request, ipAddress, userAgent);
-        if (loginResponse == null)
-        {
-            return TypedResults.Unauthorized();
-        }
+        if (loginResponse == null) return TypedResults.Unauthorized();
 
         return TypedResults.Ok(loginResponse);
     }
 
     /// <summary>
-    /// 用户注册
+    ///     用户注册
     /// </summary>
     private static async Task<Results<Ok<LoginResponse>, BadRequest<string>>> Register(
         RegisterUserRequest request,
@@ -67,23 +62,15 @@ public static class AuthEndpoints
         HttpContext context)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
-        {
             return TypedResults.BadRequest("用户名和密码不能为空");
-        }
 
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            return TypedResults.BadRequest("邮箱不能为空");
-        }
+        if (string.IsNullOrWhiteSpace(request.Email)) return TypedResults.BadRequest("邮箱不能为空");
 
         var ipAddress = context.Connection.RemoteIpAddress?.ToString();
         var userAgent = context.Request.Headers.UserAgent.ToString();
 
         var registerResponse = await authService.RegisterAsync(request, ipAddress, userAgent);
-        if (registerResponse == null)
-        {
-            return TypedResults.BadRequest("注册失败");
-        }
+        if (registerResponse == null) return TypedResults.BadRequest("注册失败");
 
         return TypedResults.Ok(registerResponse);
     }

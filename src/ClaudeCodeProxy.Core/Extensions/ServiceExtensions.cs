@@ -17,8 +17,8 @@ public static class ServiceExtensions
         services.AddScoped<IThorResponsesService, OpenAIResponsesService>();
         services.AddScoped<OpenAIAnthropicChatCompletionsService>();
         services.AddScoped<OpenAiAnthropicResponsesService>();
-        
-        
+
+
         return services;
     }
 }

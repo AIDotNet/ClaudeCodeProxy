@@ -27,17 +27,12 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
 
         // 判断是否是魔塔
         if (options?.Address.StartsWith("https://api-inference.modelscope.cn") == false)
-        {
-            chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+            chatCompletionCreate.StreamOptions = new ThorStreamOptions
             {
                 IncludeUsage = true
             };
-        }
 
-        if (string.IsNullOrEmpty(options?.Address))
-        {
-            options.Address = "https://api.openai.com/v1";
-        }
+        if (string.IsNullOrEmpty(options?.Address)) options.Address = "https://api.openai.com/v1";
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).PostJsonAsync(
             options?.Address.TrimEnd('/') + "/chat/completions",
@@ -54,7 +49,8 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
             case >= HttpStatusCode.BadRequest:
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address,
+                logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}",
+                    options.Address,
                     response.StatusCode, error);
 
                 throw new BusinessException("OpenAI对话异常:" + error, response.StatusCode.ToString());
@@ -63,7 +59,7 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
             {
                 var result =
                     await response.Content.ReadFromJsonAsync<ThorChatCompletionsResponse>(
-                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                        cancellationToken).ConfigureAwait(false);
 
                 return result;
             }
@@ -82,12 +78,10 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
 
         // 判断是否是魔塔
         if (options?.Address.StartsWith("https://api-inference.modelscope.cn") == false)
-        {
-            chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+            chatCompletionCreate.StreamOptions = new ThorStreamOptions
             {
                 IncludeUsage = true
             };
-        }
 
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).HttpRequestRaw(
@@ -110,7 +104,7 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
         using var stream = new StreamReader(await response.Content.ReadAsStreamAsync(cancellationToken));
 
         using StreamReader reader = new(await response.Content.ReadAsStreamAsync(cancellationToken));
-        string? line = string.Empty;
+        var line = string.Empty;
         while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
         {
             line += Environment.NewLine;
@@ -130,23 +124,14 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
 
             if (string.IsNullOrWhiteSpace(line)) continue;
 
-            if (line == OpenAIConstant.Done)
-            {
-                break;
-            }
+            if (line == OpenAIConstant.Done) break;
 
-            if (line.StartsWith(':'))
-            {
-                continue;
-            }
+            if (line.StartsWith(':')) continue;
 
             var result = JsonSerializer.Deserialize<ThorChatCompletionsResponse>(line,
                 ThorJsonSerializer.DefaultOptions);
 
-            if (result == null)
-            {
-                continue;
-            }
+            if (result == null) continue;
 
             yield return result;
         }

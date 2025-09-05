@@ -1,7 +1,7 @@
 namespace ClaudeCodeProxy.Host.Models;
 
 /// <summary>
-/// 钱包DTO
+///     钱包DTO
 /// </summary>
 public class WalletDto
 {
@@ -20,7 +20,7 @@ public class WalletDto
 }
 
 /// <summary>
-/// 钱包交易记录DTO
+///     钱包交易记录DTO
 /// </summary>
 public class WalletTransactionDto
 {
@@ -39,7 +39,7 @@ public class WalletTransactionDto
 }
 
 /// <summary>
-/// 钱包统计信息DTO
+///     钱包统计信息DTO
 /// </summary>
 public class WalletStatisticsDto
 {
@@ -54,7 +54,7 @@ public class WalletStatisticsDto
 }
 
 /// <summary>
-/// 钱包充值请求
+///     钱包充值请求
 /// </summary>
 public class WalletRechargeRequest
 {
@@ -65,7 +65,7 @@ public class WalletRechargeRequest
 }
 
 /// <summary>
-/// 钱包状态更新请求
+///     钱包状态更新请求
 /// </summary>
 public class WalletStatusUpdateRequest
 {

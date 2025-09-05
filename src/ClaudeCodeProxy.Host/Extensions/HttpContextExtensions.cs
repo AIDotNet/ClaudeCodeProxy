@@ -6,8 +6,13 @@ namespace ClaudeCodeProxy.Host.Extensions;
 
 public static class HttpContextExtensions
 {
+    private static readonly byte[] EventPrefix = "event: "u8.ToArray();
+    private static readonly byte[] DataPrefix = "data: "u8.ToArray();
+    private static readonly byte[] NewLine = "\n"u8.ToArray();
+    private static readonly byte[] DoubleNewLine = "\n\n"u8.ToArray();
+
     /// <summary>
-    /// 设置响应为 text/event-stream 相关的头
+    ///     设置响应为 text/event-stream 相关的头
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
@@ -60,61 +65,50 @@ public static class HttpContextExtensions
             _ => "application/octet-stream"
         };
     }
-    //
-    // /// <summary>
-    // /// 往响应内容写入事件流数据,调用前需要先调用 <see cref="SetEventStreamHeaders"/>
-    // /// </summary>
-    // /// <param name="context"></param>
-    // /// <param name="eventName"></param>
-    // /// <param name="value"></param>
-    // /// <returns></returns>
-    // public static async ValueTask WriteAsEventStreamDataAsync(this HttpContext context,
-    //     string eventName, string value)
-    // {
-    //     await context.WriteAsEventAsync($"{eventName}{value}\n\n");
-    //     await context.Response.Body.FlushAsync();
-    // }
 
     /// <summary>
-    /// 往响应内容写入事件流数据,调用前需要先调用 <see cref="SetEventStreamHeaders"/>
+    ///     使用 JsonSerializer.SerializeAsync 直接序列化到响应流
     /// </summary>
-    /// <param name="context"></param>
-    /// <param name="event"></param>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    public static async ValueTask WriteAsEventStreamDataAsync(this HttpContext context, string @event, object value)
+    public static async ValueTask WriteAsEventStreamDataAsync<T>(
+        this HttpContext context,
+        string @event,
+        T value,
+        CancellationToken cancellationToken = default)
+        where T : class
     {
-        string jsonData;
-        if (value is string stringValue)
-        {
-            jsonData = stringValue;
-        }
-        else
-        {
-            jsonData = JsonSerializer.Serialize(value, ThorJsonSerializer.DefaultOptions);
-        }
-
-        var eventData = $"event: {@event}\ndata: {jsonData}\n\n";
-
-        await context.WriteAsEventAsync(eventData);
-        await context.Response.Body.FlushAsync();
+        var response = context.Response;
+        var bodyStream = response.Body;
+        // 确保 SSE Header 已经设置好
+        // e.g. Content-Type: text/event-stream; charset=utf-8
+        await response.StartAsync(cancellationToken).ConfigureAwait(false);
+        // 写事件类型
+        await bodyStream.WriteAsync(EventPrefix, cancellationToken).ConfigureAwait(false);
+        await WriteUtf8StringAsync(bodyStream, @event.Trim(), cancellationToken).ConfigureAwait(false);
+        await bodyStream.WriteAsync(NewLine, cancellationToken).ConfigureAwait(false);
+        // 写 data: + JSON
+        await bodyStream.WriteAsync(DataPrefix, cancellationToken).ConfigureAwait(false);
+        await JsonSerializer.SerializeAsync(
+            bodyStream,
+            value,
+            ThorJsonSerializer.DefaultOptions,
+            cancellationToken
+        ).ConfigureAwait(false);
+        // 事件结束 \n\n
+        await bodyStream.WriteAsync(DoubleNewLine, cancellationToken).ConfigureAwait(false);
+        // 及时把数据发送给客户端
+        await bodyStream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public static async ValueTask WriteAsEventAsync(this HttpContext context, string value)
+    private static async ValueTask WriteUtf8StringAsync(Stream stream, string value, CancellationToken token)
     {
-        await context.Response.WriteAsync(value, Encoding.UTF8);
-        await context.Response.Body.FlushAsync();
-    }
-
-    public static async ValueTask WriteAsEventStreamAsync(this HttpContext context, string @event)
-    {
-        var eventData = $"{@event}\n";
-        await context.Response.WriteAsync(eventData, Encoding.UTF8);
-        await context.Response.Body.FlushAsync();
+        if (string.IsNullOrEmpty(value))
+            return;
+        var buffer = Encoding.UTF8.GetBytes(value);
+        await stream.WriteAsync(buffer, token).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 往响应内容写入事件流结束数据
+    ///     往响应内容写入事件流结束数据
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
@@ -127,7 +121,7 @@ public static class HttpContextExtensions
     }
 
     /// <summary>
-    /// 获取IP地址
+    ///     获取IP地址
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
@@ -136,46 +130,30 @@ public static class HttpContextExtensions
         var address = context.Connection.RemoteIpAddress;
         // 获取具体IP地址，不包括:ffff:，可能是IPv6
         if (address?.IsIPv4MappedToIPv6 == true)
-        {
             address = address.MapToIPv4();
-        }
         else if (address?.IsIPv6SiteLocal == true)
-        {
             address = address.MapToIPv4();
-        }
         else if (address?.IsIPv6Teredo == true)
-        {
             address = address.MapToIPv4();
-        }
         else if (address?.IsIPv6Multicast == true)
-        {
             address = address.MapToIPv6();
-        }
         else if (address?.IsIPv6UniqueLocal == true)
-        {
             address = address.MapToIPv6();
-        }
         else if (address?.IsIPv6LinkLocal == true)
-        {
             address = address.MapToIPv6();
-        }
         else
-        {
             address = address?.MapToIPv4();
-        }
 
         var ip = address?.ToString();
 
         if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var ips) && !string.IsNullOrWhiteSpace(ips))
-        {
             ip = ips.ToString();
-        }
 
         return ip;
     }
 
     /// <summary>
-    /// 获取userAgent
+    ///     获取userAgent
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
@@ -189,11 +167,8 @@ public static class HttpContextExtensions
         {
             var index = userAgent.IndexOf('(');
             if (index > 0)
-            {
                 userAgent = userAgent[..index];
-            }
             else
-            {
                 userAgent = userAgent switch
                 {
                     not null when userAgent.Contains("Windows") => "Windows",
@@ -204,7 +179,6 @@ public static class HttpContextExtensions
                     not null when userAgent.Contains("iPad") => "iPad",
                     _ => "未知"
                 };
-            }
         }
 
         return userAgent ?? "未知";

@@ -4,37 +4,32 @@ using System.Net.Http.Headers;
 
 namespace Thor.Abstractions.ObjectModels.ObjectModels.RequestModels;
 
-public partial class MultiPartFormDataBinaryContent : BinaryContent
+public class MultiPartFormDataBinaryContent : BinaryContent
 {
-    private readonly MultipartFormDataContent _multipartContent;
-    private static readonly Random _random = new Random();
+    private static readonly Random _random = new();
 
     private static readonly char[] _boundaryValues =
         "0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".ToCharArray();
+
+    private readonly MultipartFormDataContent _multipartContent;
 
     public MultiPartFormDataBinaryContent()
     {
         _multipartContent = new MultipartFormDataContent(CreateBoundary());
     }
 
-    public string ContentType
-    {
-        get { return _multipartContent.Headers.ContentType.ToString(); }
-    }
+    public string ContentType => _multipartContent.Headers.ContentType.ToString();
 
     public HttpContent HttpContent => _multipartContent;
 
     private static string CreateBoundary()
     {
         Span<char> chars = new char[70];
-        byte[] random = new byte[70];
+        var random = new byte[70];
         _random.NextBytes(random);
-        int mask = 255 >> 2;
-        int i = 0;
-        for (; i < 70; i++)
-        {
-            chars[i] = _boundaryValues[random[i] & mask];
-        }
+        var mask = 255 >> 2;
+        var i = 0;
+        for (; i < 70; i++) chars[i] = _boundaryValues[random[i] & mask];
 
         return chars.ToString();
     }
@@ -46,37 +41,37 @@ public partial class MultiPartFormDataBinaryContent : BinaryContent
 
     public void Add(int content, string name, string filename = default, string contentType = default)
     {
-        string value = content.ToString("G", CultureInfo.InvariantCulture);
+        var value = content.ToString("G", CultureInfo.InvariantCulture);
         Add(new StringContent(value), name, filename, contentType);
     }
 
     public void Add(long content, string name, string filename = default, string contentType = default)
     {
-        string value = content.ToString("G", CultureInfo.InvariantCulture);
+        var value = content.ToString("G", CultureInfo.InvariantCulture);
         Add(new StringContent(value), name, filename, contentType);
     }
 
     public void Add(float content, string name, string filename = default, string contentType = default)
     {
-        string value = content.ToString("G", CultureInfo.InvariantCulture);
+        var value = content.ToString("G", CultureInfo.InvariantCulture);
         Add(new StringContent(value), name, filename, contentType);
     }
 
     public void Add(double content, string name, string filename = default, string contentType = default)
     {
-        string value = content.ToString("G", CultureInfo.InvariantCulture);
+        var value = content.ToString("G", CultureInfo.InvariantCulture);
         Add(new StringContent(value), name, filename, contentType);
     }
 
     public void Add(decimal content, string name, string filename = default, string contentType = default)
     {
-        string value = content.ToString("G", CultureInfo.InvariantCulture);
+        var value = content.ToString("G", CultureInfo.InvariantCulture);
         Add(new StringContent(value), name, filename, contentType);
     }
 
     public void Add(bool content, string name, string filename = default, string contentType = default)
     {
-        string value = content ? "true" : "false";
+        var value = content ? "true" : "false";
         Add(new StringContent(value), name, filename, contentType);
     }
 
@@ -97,24 +92,17 @@ public partial class MultiPartFormDataBinaryContent : BinaryContent
 
     private void Add(HttpContent content, string name, string filename, string contentType)
     {
-        if (contentType != null)
-        {
-            AddContentTypeHeader(content, contentType);
-        }
+        if (contentType != null) AddContentTypeHeader(content, contentType);
 
         if (filename != null)
-        {
             _multipartContent.Add(content, name, filename);
-        }
         else
-        {
             _multipartContent.Add(content, name);
-        }
     }
 
     public static void AddContentTypeHeader(HttpContent content, string contentType)
     {
-        MediaTypeHeaderValue header = new MediaTypeHeaderValue(contentType);
+        var header = new MediaTypeHeaderValue(contentType);
         content.Headers.ContentType = header;
     }
 

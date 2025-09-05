@@ -5,7 +5,7 @@ using Mapster;
 namespace ClaudeCodeProxy.Host.Mappings;
 
 /// <summary>
-/// 账户映射配置
+///     账户映射配置
 /// </summary>
 public class AccountMappingConfig : IRegister
 {
@@ -66,37 +66,31 @@ public class AccountMappingConfig : IRegister
     }
 
     /// <summary>
-    /// 获取脱敏的API Key显示
+    ///     获取脱敏的API Key显示
     /// </summary>
     private static string? GetMaskedApiKey(string? apiKey)
     {
-        if (string.IsNullOrEmpty(apiKey) || apiKey.Length <= 8)
-        {
-            return "****";
-        }
+        if (string.IsNullOrEmpty(apiKey) || apiKey.Length <= 8) return "****";
 
         return $"{apiKey[..4]}****{apiKey[^4..]}";
     }
 
     /// <summary>
-    /// 映射限流信息
+    ///     映射限流信息
     /// </summary>
     private static RateLimitDisplayInfo? MapRateLimitInfo(Accounts account)
     {
-        var isRateLimited = account.Status == "rate_limited" && 
-                           account.RateLimitedUntil.HasValue && 
-                           account.RateLimitedUntil > DateTime.Now;
+        var isRateLimited = account.Status == "rate_limited" &&
+                            account.RateLimitedUntil.HasValue &&
+                            account.RateLimitedUntil > DateTime.Now;
 
-        if (!isRateLimited && string.IsNullOrEmpty(account.LastError))
-        {
-            return null;
-        }
+        if (!isRateLimited && string.IsNullOrEmpty(account.LastError)) return null;
 
         return new RateLimitDisplayInfo
         {
             IsRateLimited = isRateLimited,
             RateLimitedUntil = account.RateLimitedUntil,
-            RetryAfterMinutes = isRateLimited && account.RateLimitedUntil.HasValue 
+            RetryAfterMinutes = isRateLimited && account.RateLimitedUntil.HasValue
                 ? Math.Max(0, (int)(account.RateLimitedUntil.Value - DateTime.Now).TotalMinutes)
                 : null,
             LastError = account.LastError
@@ -104,7 +98,7 @@ public class AccountMappingConfig : IRegister
     }
 
     /// <summary>
-    /// 获取建议的优先级
+    ///     获取建议的优先级
     /// </summary>
     private static int GetSuggestedPriority(Accounts account)
     {
@@ -112,7 +106,7 @@ public class AccountMappingConfig : IRegister
         return account.AccountType.ToLower() switch
         {
             "dedicated" => 10, // 专属账户优先级高
-            "shared" => 50,    // 共享账户中等优先级
+            "shared" => 50, // 共享账户中等优先级
             _ => 50
         };
     }
