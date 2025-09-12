@@ -7,7 +7,7 @@ namespace ClaudeCodeProxy.Core.Extensions;
 public static class HttpClientExtensions
 {
     private static readonly MediaTypeHeaderValue JsonMediaType =
-        new("application/json") { CharSet = "utf-8" };
+        new("application/json") {  };
 
     private static async ValueTask<HttpContent> CreateJsonContentAsync(object value)
     {

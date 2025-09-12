@@ -37,13 +37,21 @@ public class ResponsesSSEDtoPart
 
 public class ResponsesSSEDtoItem
 {
-    [JsonPropertyName("id")] public string Id { get; set; }
+    [JsonPropertyName("id")] public string? Id { get; set; }
 
-    [JsonPropertyName("type")] public string Type { get; set; }
+    [JsonPropertyName("type")] public string? Type { get; set; }
 
-    [JsonPropertyName("status")] public string Status { get; set; }
+    [JsonPropertyName("status")] public string? Status { get; set; }
 
-    [JsonPropertyName("content")] public ResponsesSSEDtoPart[] Content { get; set; }
+    [JsonPropertyName("content")] public ResponsesSSEDtoPart[]? Content { get; set; }
 
     [JsonPropertyName("role")] public string Role { get; set; }
+
+    [JsonPropertyName("arguments")]public string? Arguments { get; set; }
+
+    [JsonPropertyName("call_id")]
+    public string? CallId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
 }

@@ -36,6 +36,9 @@ public class ResponsesDto
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
+    [JsonPropertyName("background")]
+    public bool? Background { get; set; }
+
     /// <summary>
     ///     Error information if any.
     ///     错误信息（如果有）。
@@ -62,7 +65,10 @@ public class ResponsesDto
     ///     最大输出标记数。
     /// </summary>
     [JsonPropertyName("max_output_tokens")]
-    public object? MaxOutputTokens { get; set; }
+    public int? MaxOutputTokens { get; set; }
+
+    [JsonPropertyName("max_tool_calls")]
+    public int? MaxToolCalls { get; set; }
 
     /// <summary>
     ///     Model used for the response.

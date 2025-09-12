@@ -19,6 +19,21 @@ public interface IThorResponsesService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="input"></param>
+    /// <param name="headers"></param>
+    /// <param name="config"></param>
+    /// <param name="options"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<ResponsesDto> GetStreamToResponseAsync(ResponsesInput input,
+        Dictionary<string, string> headers,
+        ProxyConfig? config,
+        ThorPlatformOptions? options = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// </summary>
     /// <param name="input"></param>
     /// <param name="headers"></param>

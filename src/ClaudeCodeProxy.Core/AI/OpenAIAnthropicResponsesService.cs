@@ -32,7 +32,7 @@ public class OpenAiAnthropicResponsesService(
 
             // 调用OpenAI服务
             var openAIResponse =
-                await thorResponsesService.GetResponseAsync(openAIRequest, headers, config, options, cancellationToken);
+                await thorResponsesService.GetStreamToResponseAsync(openAIRequest, headers, config, options, cancellationToken);
 
             // 转换响应格式：OpenAI -> Claude
             var claudeResponse = ConvertOpenAIToClaude(openAIResponse, input);
@@ -211,7 +211,7 @@ public class OpenAiAnthropicResponsesService(
                 if (sseData.Item?.Type == "reasoning" && sseData.Item.Content?.Length > 0)
                     reasoningContent = sseData.Item.Content[0]?.Text;
                 else if (sseData.Response?.Reasoning?.Summary != null)
-                    reasoningContent = ExtractReasoningContent(sseData.Response.Reasoning.Summary);
+                    reasoningContent = ExtractReasoningContent(sseData.Response.Reasoning);
 
                 if (!string.IsNullOrEmpty(reasoningContent))
                 {
@@ -567,41 +567,16 @@ public class OpenAiAnthropicResponsesService(
     /// <summary>
     ///     从推理对象中提取推理内容
     /// </summary>
-    private string? ExtractReasoningContent(object? reasoning)
+    private string? ExtractReasoningContent(Reasoning? reasoning)
     {
         if (reasoning == null) return null;
 
-        // 如果是字符串直接返回
-        if (reasoning is string reasoningStr)
-            return reasoningStr;
-
-        // 如果是对象，尝试提取文本内容
-        if (reasoning is JsonElement element)
+        if (!string.IsNullOrEmpty(reasoning.GenerateSummary))
         {
-            if (element.ValueKind == JsonValueKind.String)
-                return element.GetString();
-
-            // 尝试提取常见的推理内容字段
-            if (element.ValueKind == JsonValueKind.Object)
-            {
-                if (element.TryGetProperty("content", out var contentProp))
-                    return contentProp.GetString();
-                if (element.TryGetProperty("text", out var textProp))
-                    return textProp.GetString();
-                if (element.TryGetProperty("reasoning", out var reasoningProp))
-                    return reasoningProp.GetString();
-            }
+            return reasoning.GenerateSummary;
         }
 
-        // 最后尝试序列化整个对象
-        try
-        {
-            return JsonSerializer.Serialize(reasoning, ThorJsonSerializer.DefaultOptions);
-        }
-        catch
-        {
-            return reasoning?.ToString();
-        }
+        return null;
     }
 
     /// <summary>

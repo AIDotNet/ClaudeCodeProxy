@@ -13,12 +13,13 @@ using Thor.Abstractions;
 
 namespace ClaudeCodeProxy.Host.Services.AI;
 
-[MiniApi(Route = "/v1/messages", Tags = "Messages")]
+[MiniApi(Route = "/v1/messages", Tags = "Anthropic")]
 public class MessageService(
     AccountsService accountsService,
     ILogger<MessageService> logger,
     SessionHelper sessionHelper)
 {
+    [HttpPost("/")]
     public async Task HandleAsync(
         HttpContext httpContext,
         [FromServices] ApiKeyService keyService,
