@@ -35,12 +35,12 @@ public static class HttpClientFactory
         }
     }
 
-    public static HttpClient GetHttpClient(string key, ProxyConfig? config)
+    public static HttpClient GetHttpClient(string key, ProxyConfig? proxyConfig)
     {
         return HttpClientPool.GetOrAdd(key, k => new Lazy<List<HttpClient>>(() =>
         {
             // 创建好代理
-            var proxy = new HttpClientHandler
+            var handler = new HttpClientHandler
             {
                 AllowAutoRedirect = true,
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate |
@@ -52,21 +52,23 @@ public static class HttpClientFactory
                 MaxAutomaticRedirections = 3,
                 UseProxy = true
             };
-            if (config != null && !string.IsNullOrEmpty(config.Host) && config.Port > 0)
-            {
-                proxy.Proxy = new WebProxy(config.Host, config.Port)
-                {
-                    BypassProxyOnLocal = true,
-                    UseDefaultCredentials = false
-                };
-                if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
-                    proxy.Proxy.Credentials = new NetworkCredential(config.Username, config.Password);
 
-                proxy.UseProxy = true;
+            if (proxyConfig != null && !string.IsNullOrEmpty(proxyConfig.Host) && proxyConfig.Port > 0)
+            {
+
+                var proxyUri = $"{proxyConfig.Type}://{proxyConfig.Host}:{proxyConfig.Port}";
+
+                if (!string.IsNullOrEmpty(proxyConfig.Username) && !string.IsNullOrEmpty(proxyConfig.Password))
+                    proxyUri =
+                        $"{proxyConfig.Type}://{proxyConfig.Username}:{proxyConfig.Password}@{proxyConfig.Host}:{proxyConfig.Port}";
+
+                handler.Proxy = new WebProxy(proxyUri);
+                handler.UseProxy = true;
+
                 var clients = new List<HttpClient>(PoolSize);
 
                 for (var i = 0; i < PoolSize; i++)
-                    clients.Add(new HttpClient(proxy)
+                    clients.Add(new HttpClient(handler)
                     {
                         Timeout = TimeSpan.FromMinutes(30)
                     });
