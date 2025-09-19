@@ -1,5 +1,6 @@
 ﻿using ClaudeCodeProxy.Abstraction.Chats;
 using ClaudeCodeProxy.Core;
+using ClaudeCodeProxy.Core.AI;
 using ClaudeCodeProxy.Core.AI.Responses;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Extensions;
@@ -163,7 +164,7 @@ namespace ClaudeCodeProxy.Host.Services.AI
 
             var account =
                 await accountsService.SelectAccountForApiKey(apiKeyValue, Guid.NewGuid().ToString(), request.Model,
-                    false,
+                    true,
                     httpContext.RequestAborted);
 
             // 实现模型映射功能
@@ -271,6 +272,14 @@ namespace ClaudeCodeProxy.Host.Services.AI
                 {
                     // 是否第一次输出
                     var isFirst = true;
+
+                    // 判断当前请求是否包含了Codex的提示词
+                    if(string.IsNullOrEmpty(request.Instructions))
+                    {
+                        request.Instructions = AIPrompt.CodeXPrompt;
+                    }
+                    request.Store = false;
+                    request.ServiceTier = null;
 
                     await foreach (var (eventName, item) in openAIResponses.GetResponsesAsync(
                                        request,
