@@ -15,22 +15,23 @@ namespace ClaudeCodeProxy.Host.Services.AI
 {
     [MiniApi(Route = "/v1/responses", Tags = "OpenAI")]
     public class OpenAIResponses(
-    AccountsService accountsService,
-    ILogger<MessageService> logger,
-    SessionHelper sessionHelper)
+        AccountsService accountsService,
+        ILogger<MessageService> logger,
+        SessionHelper sessionHelper)
     {
         [HttpPost("/")]
         public async Task HandleAsync(
-        HttpContext httpContext,
-        [FromServices] ApiKeyService keyService,
-        [FromServices] RequestLogService requestLogService,
-        [FromServices] WalletService walletService,
-        [FromBody] ResponsesInput request,
-        [FromServices] IContext context,
-        [FromServices] IAnthropicChatCompletionsService chatCompletionsService)
+            HttpContext httpContext,
+            [FromServices] ApiKeyService keyService,
+            [FromServices] RequestLogService requestLogService,
+            [FromServices] WalletService walletService,
+            [FromBody] ResponsesInput request,
+            [FromServices] IContext context,
+            [FromServices] IAnthropicChatCompletionsService chatCompletionsService)
         {
             var apiKey = httpContext.Request.Headers["x-api-key"].FirstOrDefault() ??
-                         httpContext.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", string.Empty);
+                         httpContext.Request.Headers["Authorization"].FirstOrDefault()
+                             ?.Replace("Bearer ", string.Empty);
 
             if (string.IsNullOrEmpty(apiKey))
             {
@@ -47,10 +48,10 @@ namespace ClaudeCodeProxy.Host.Services.AI
             {
                 httpContext.Response.StatusCode = 401; // Unauthorized
                 await httpContext.Response.WriteAsJsonAsync(new
-                {
-                    message = "API Key不存在或已被禁用",
-                    code = "401"
-                }, httpContext.RequestAborted)
+                    {
+                        message = "API Key不存在或已被禁用",
+                        code = "401"
+                    }, httpContext.RequestAborted)
                     .ConfigureAwait(false);
                 return;
             }
@@ -250,9 +251,12 @@ namespace ClaudeCodeProxy.Host.Services.AI
             {
                 // 准备请求头和代理配置
                 var headers = new Dictionary<string, string>
-            {
-                { "Authorization", "Bearer " + accessToken }
-            };
+                {
+                    { "Authorization", "Bearer " + accessToken },
+                    { "User-Agent", "codex_cli_rs/0.46.0 (Windows 10.0.26200; x86_64) vscode/1.105.1" },
+                    { "openai-beta", "responses=experimental" },
+                    { "originator", "codex_cli_rs" }
+                };
 
                 var proxyConfig = account?.Proxy;
 
@@ -274,10 +278,11 @@ namespace ClaudeCodeProxy.Host.Services.AI
                     var isFirst = true;
 
                     // 判断当前请求是否包含了Codex的提示词
-                    if(string.IsNullOrEmpty(request.Instructions))
+                    if (string.IsNullOrEmpty(request.Instructions))
                     {
                         request.Instructions = AIPrompt.CodeXPrompt;
                     }
+
                     request.Store = false;
                     request.ServiceTier = null;
 
@@ -356,7 +361,8 @@ namespace ClaudeCodeProxy.Host.Services.AI
 
                 // 扣除钱包余额
                 var walletService = httpContext.RequestServices.GetRequiredService<WalletService>();
-                await walletService.DeductWalletAsync(apiKeyValue.UserId, cost, $"API调用费用 - {request.Model}", requestLogId);
+                await walletService.DeductWalletAsync(apiKeyValue.UserId, cost, $"API调用费用 - {request.Model}",
+                    requestLogId);
 
                 // 添加配额响应头
                 AddQuotaHeaders(httpContext, apiKeyValue);
@@ -372,7 +378,8 @@ namespace ClaudeCodeProxy.Host.Services.AI
 
                     // 记录限流日志
                     var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
-                    logger.LogWarning("OpenAI Responses账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}",
+                    logger.LogWarning(
+                        "OpenAI Responses账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}",
                         account.Name, account.Id, rateLimitedUntil);
                 }
 
@@ -581,7 +588,5 @@ namespace ClaudeCodeProxy.Host.Services.AI
 
             return cost;
         }
-
     }
-
 }
